@@ -124,11 +124,11 @@ window.pill-window {
 
 def safe_quit():
     try:
-        while Gtk.main_level() > 0:
+        if Gtk.main_level() > 0:
             Gtk.main_quit()
     except Exception:
         pass
-    sys.exit(0)
+    os._exit(0)
 
 class FloatingPill(Gtk.Window):
     def __init__(self):
@@ -142,6 +142,7 @@ class FloatingPill(Gtk.Window):
         self.set_resizable(False)
         self.set_app_paintable(True)
         self.get_style_context().add_class("pill-window")
+        self.connect("destroy", lambda w: safe_quit())
 
         # RGBA for transparency
         screen = Gdk.Screen.get_default()
