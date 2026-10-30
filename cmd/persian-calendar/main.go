@@ -125,7 +125,10 @@ func main() {
 			}
 		})
 		trayCtrl.SetOnShowFloating(func() {
-			_ = floatingLauncher.Open()
+			log.Println("Top-bar indicator menu: opening floating pill")
+			if err := floatingLauncher.Open(); err != nil {
+				log.Printf("Error opening floating pill: %v", err)
+			}
 		})
 		trayCtrl.SetOnExit(cleanup)
 	}

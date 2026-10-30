@@ -101,17 +101,24 @@ function Update-State {
         $timer = $resp.timer
         $elapsed = $resp.elapsed_seconds
 
-        if (-not $timer.is_running) {
-            $window.Close()
-            return
-        }
-
         $script:failedPolls = 0
         $script:isRunning = $timer.is_running
         $script:isPaused = $timer.is_paused
 
+        if (-not $script:isRunning) {
+            $projectText.Text = "آماده کار"
+            $clockText.Text = "۰۰:۰۰:۰۰"
+            $dot.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#64748B")
+            $pauseResumeBtn.Content = "شروع ▶"
+            $pauseResumeBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#34D399")
+            $pauseResumeBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3310B981")
+            $stopBtn.Content = "بستن ✕"
+            return
+        }
+
         $projectText.Text = if ($timer.project) { $timer.project } else { "پروژه عمومی" }
         $clockText.Text = To-PersianDigits (Format-Seconds $elapsed)
+        $stopBtn.Content = "پایان"
 
         if ($script:isPaused) {
             $dot.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F59E0B")
@@ -134,6 +141,14 @@ function Update-State {
 }
 
 $pauseResumeBtn.Add_Click({
+    if (-not $script:isRunning) {
+        try {
+            $body = '{"project":"پروژه عمومی"}'
+            Invoke-RestMethod -Uri "$ServerUrl/api/timer/start" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 2 | Out-Null
+            Update-State
+        } catch {}
+        return
+    }
     $endpoint = if ($script:isPaused) { "/api/timer/resume" } else { "/api/timer/pause" }
     try {
         Invoke-RestMethod -Uri "$ServerUrl$endpoint" -Method Post -TimeoutSec 2 | Out-Null
@@ -142,9 +157,11 @@ $pauseResumeBtn.Add_Click({
 })
 
 $stopBtn.Add_Click({
-    try {
-        Invoke-RestMethod -Uri "$ServerUrl/api/timer/stop" -Method Post -TimeoutSec 2 | Out-Null
-    } catch {}
+    if ($script:isRunning) {
+        try {
+            Invoke-RestMethod -Uri "$ServerUrl/api/timer/stop" -Method Post -TimeoutSec 2 | Out-Null
+        } catch {}
+    }
     $window.Close()
 })
 

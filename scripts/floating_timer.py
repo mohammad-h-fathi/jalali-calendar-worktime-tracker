@@ -76,6 +76,10 @@ window.pill-window {
     background-color: #f59e0b;
 }
 
+.status-dot.idle {
+    background-color: #64748b;
+}
+
 .pill-btn {
     font-family: 'Lahzeh', -apple-system, sans-serif;
     font-size: 11px;
@@ -235,12 +239,6 @@ class FloatingPill(Gtk.Window):
                 self.is_paused = timer.get("is_paused", False)
                 self.project_name = timer.get("project", "پروژه عمومی")
 
-                # If timer was stopped elsewhere, remove floating pill!
-                if not self.is_running:
-                    print("Timer is not running. Closing floating pill.")
-                    safe_quit()
-                    return False
-
                 self.failed_polls = 0
                 self.update_view()
         except Exception as e:
@@ -252,12 +250,33 @@ class FloatingPill(Gtk.Window):
         return True
 
     def update_view(self):
-        self.lbl_project.set_text(self.project_name)
-        time_str = format_seconds(self.elapsed)
-        self.lbl_clock.set_text(to_persian_digits(time_str))
-
         ctx_dot = self.dot.get_style_context()
         ctx_btn = self.btn_pause_resume.get_style_context()
+
+        if not self.is_running:
+            self.lbl_project.set_text("آماده کار")
+            self.lbl_clock.set_text(to_persian_digits("۰۰:۰۰:۰۰"))
+            if not ctx_dot.has_class("idle"):
+                ctx_dot.add_class("idle")
+            if ctx_dot.has_class("paused"):
+                ctx_dot.remove_class("paused")
+
+            self.btn_pause_resume.set_label("شروع ▶")
+            if ctx_btn.has_class("btn-pause"):
+                ctx_btn.remove_class("btn-pause")
+            if not ctx_btn.has_class("btn-resume"):
+                ctx_btn.add_class("btn-resume")
+
+            self.btn_stop.set_label("بستن ✕")
+            return
+
+        self.lbl_project.set_text(self.project_name or "پروژه عمومی")
+        time_str = format_seconds(self.elapsed)
+        self.lbl_clock.set_text(to_persian_digits(time_str))
+        self.btn_stop.set_label("پایان")
+
+        if ctx_dot.has_class("idle"):
+            ctx_dot.remove_class("idle")
 
         if self.is_paused:
             if not ctx_dot.has_class("paused"):
@@ -277,6 +296,22 @@ class FloatingPill(Gtk.Window):
                 ctx_btn.add_class("btn-pause")
 
     def on_toggle_pause(self, widget):
+        if not self.is_running:
+            try:
+                payload = json.dumps({"project": "پروژه عمومی"}).encode('utf-8')
+                req = urllib.request.Request(
+                    f"{SERVER_BASE}/api/timer/start",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=2.0) as resp:
+                    pass
+                self.poll_timer()
+            except Exception as e:
+                print("Failed to start timer:", e)
+            return
+
         endpoint = "/api/timer/resume" if self.is_paused else "/api/timer/pause"
         try:
             req = urllib.request.Request(f"{SERVER_BASE}{endpoint}", method="POST")
@@ -287,17 +322,16 @@ class FloatingPill(Gtk.Window):
             print("Failed to toggle pause:", e)
 
     def on_stop_clicked(self, widget):
-        print("Stop clicked! Sending stop request and removing floating pill.")
-        try:
-            req = urllib.request.Request(f"{SERVER_BASE}/api/timer/stop", method="POST")
-            with urllib.request.urlopen(req, timeout=2.0) as resp:
-                pass
-        except Exception as e:
-            print("Failed to stop timer:", e)
-        finally:
-            # IMMEDIATELY DESTROY & REMOVE WINDOW
-            self.destroy()
-            safe_quit()
+        if self.is_running:
+            print("Stop clicked! Sending stop request and removing floating pill.")
+            try:
+                req = urllib.request.Request(f"{SERVER_BASE}/api/timer/stop", method="POST")
+                with urllib.request.urlopen(req, timeout=2.0) as resp:
+                    pass
+            except Exception as e:
+                print("Failed to stop timer:", e)
+        self.destroy()
+        safe_quit()
 
 if __name__ == "__main__":
     win = FloatingPill()
