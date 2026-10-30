@@ -1,4 +1,8 @@
-# گاه‌شمار جلالی و زمان‌سنج کارکرد (Jalali Calendar & Worktime Tracker)
+# Jalali Calendar & Worktime Tracker
+
+<div align="center">
+
+[🇬🇧 English](README.md) • [🇮🇷 فارسی](README.fa.md)
 
 [![Release](https://img.shields.io/github/v/release/mohammad-h-fathi/jalali-calendar-worktime-tracker?style=flat-square&color=3b82f6)](https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker/releases)
 [![Build & Release](https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker/actions/workflows/release.yml/badge.svg)](https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker/actions)
@@ -6,55 +10,59 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-blueviolet?style=flat-square)](https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-یک اپلیکیشن دسکتاپ بومی، سبک و مدرن برای **لینوکس (اوبونتو ۲۴.۰۴ و ۲۶.۰۴ با GNOME و Wayland)**، **ویندوز (Windows 10/11)** و **مک (macOS)** که با زبان **Go** توسعه یافته است. این برنامه تاریخ خورشیدی و زمان‌سنج زنده را در نوار بالای اوبونتو نمایش می‌دهد، مجهز به یک **تایمر شناور بدون قاب (Borderless Always-on-Top Pill)** است و مدیریت کارهای روزانه (To-Do) و ثبت کارکرد زمانی را با تایپوگرافی چشم‌نواز فونت فارسی **لحظه (Lahzeh)** فراهم می‌کند.
+</div>
+
+A native, lightweight, and modern desktop application for **Linux (Ubuntu 24.04 / 26.04 GNOME Wayland & X11)**, **Windows 10 / 11**, and **macOS**, written in **Go (Golang)**.
+
+It displays a live Solar Hijri (Jalali) date and stopwatch indicator in the **Ubuntu GNOME top-bar**, features a sleek **borderless, always-on-top floating action timer pill**, provides daily **task management (To-Do)** tied to Persian calendar dates, and tracks **work hours per project** — rendered with the **Lahzeh (لحظه)** Persian typography.
 
 ---
 
-## ✨ ویژگی‌های برجسته
+## ✨ Key Features
 
-### ۱. نشانگر زنده در نوار بالای اوبونتو (GNOME Status Area)
-* نمایش دائمی تاریخ خورشیدی جاری در نوار وضعیت بالای اوبونتو (مثلاً `۸ آبان ۱۴۰۵`).
-* **تایمر دینامیک:** به محض شروع کار، زمان‌سنج به صورت زنده و ثانیه‌ای در کنار تاریخ به نمایش درمی‌آید:  
+### 1. GNOME Top-Bar Live Indicator (StatusNotifierItem & DBusMenu)
+* **Always-visible date:** Shows today's Jalali date directly in the GNOME status panel (e.g. `۸ آبان ۱۴۰۵`).
+* **Live Dynamic Stopwatch:** When a timer is running, elapsed time ticks live right in the top bar:  
   `۸ آبان | ⏱ ۰۰:۲۴:۱۰`
-* **منوی کاربردی کلیک راست (DBusMenu):** دسترسی سریع به باز کردن گاه‌شمار، شروع/توقف زمان‌سنج، باز کردن تایمر شناور و خروج از برنامه.
+* **Right-Click Menu:** Quick access to open the dashboard, toggle/pause the timer, show the floating pill, or exit.
 
-### ۲. تایمر شناور مینیاتوری و بدون قاب (Borderless Floating Action Pill)
-* **کاملاً بدون کادر:** بدون نوار عنوان (Titlebar)، بدون دکمه‌های بستن و مینیمایز پنجره، با پس‌زمینه شیشه‌ای تیره (Glassmorphic) و گوشه‌های کاملاً گرد.
-* **همیشه رو (Always-on-Top):** روی تمام برنامه‌ها (مرورگرها، IDEها، ترمینال و بازی‌ها) معلق می‌ماند.
-* **جابه‌جایی روان (Draggable):** با کلیک و درگ ماوس در هر نقطه از صفحه مانیتور جابه‌جا می‌شود.
-* **حذف خودکار با زدن توقف (Auto-Removed on Stop):** به محض کلیک روی دکمه «پایان ⏹»، زمان کارکرد به عنوان سشن ذخیره شده و پنجره شناور **بلافاصله و خودکار از روی صفحه بسته و محو می‌شود**.
-* **مستقل و بدون وابستگی:** روی ویندوز از طریق موتور داخلی PowerShell/WPF اجرا شده و به هیچ پیش‌نیاز یا نصب پایتون احتیاج ندارد.
+### 2. Borderless Always-on-Top Floating Action Timer Pill
+* **Truly Borderless & Frameless:** No window titlebars, no minimize/maximize/close buttons. Styled as a compact rounded glassmorphic capsule (~270x44px).
+* **Always-on-Top:** Floats above all open windows (browsers, IDEs, terminal, full-screen editors).
+* **Draggable:** Easily dragged anywhere across monitors with mouse drag.
+* **Auto-Removed on Stop:** Pressing **"Stop ⏹"** saves the session and **instantly removes and closes the floating window**.
+* **Zero External Dependencies:** Built with native OS runtimes (GTK 3 on Linux, built-in PowerShell/WPF on Windows). Requires no Python installation on Windows!
 
-### ۳. تقویم خورشیدی هوشمند و مناسبت‌ها
-* پیاده‌سازی دقیق الگوریتم نجومی تقویم جلالی با محاسبه دقیق سال‌های کبیسه.
-* **اتصال به سامانه رویدادهای ملی:** دریافت رویدادها و تعطیلات رسمی هر ماه به طور خودکار از API رسمی (`iran.ir/Calendar/GetEvents`) به همراه کش محلی و حالت آفلاین.
-* نمایش نشانگر کارهای روز و مجموع ساعات کارکرد ثبت‌شده در تقویم ماهانه.
+### 3. Smart Jalali Calendar & Official Events
+* Astronomical Solar Hijri leap year algorithm for 100% mathematical accuracy.
+* **Live National Events API:** Automatically fetches official holidays and cultural occasions from `iran.ir/Calendar/GetEvents` with in-memory caching and offline fallback.
+* Displays daily task badges and total work duration per day on the monthly grid.
 
-### ۴. سیستم ثبت زمان کار (Worktime Tracker)
-* مدیریت پروژه‌های کاری مختلف با برچسب‌های رنگی دلخواه.
-* زمان‌سنج زنده با قابلیت مکث (Pause) و ادامه (Resume).
-* امکان ثبت دستی سشن‌های کارکرد گذشته (مشخص کردن ساعت شروع، پایان و توضیحات).
-* نمایش خلاصه ساعات کارکرد روزانه و تفکیک درصدی پروژه‌ها.
+### 4. Worktime Punch Clock & Analytics
+* Categorize work sessions by project with custom color indicators.
+* Live stopwatch with Pause / Resume and focus descriptions.
+* Manual logging for past work sessions.
+* Daily work summary with percentage breakdown per project.
 
-### ۵. مدیریت کارها و وظایف (To-Do List)
-* ثبت وظایف متصل به روزهای مشخص تقویم جلالی.
-* تیک زدن و حذف کارها با ذخیره‌سازی فوری.
-* شمارنده کارهای باز و ناتمام در نوار ناوبری.
+### 5. Daily Task Management (To-Do List)
+* Tasks tied directly to Persian calendar dates.
+* Quick toggle and deletion with instant synchronization.
+* Badge counter in the navigation bar for pending tasks.
 
 ---
 
-## 📥 دانلود و نصب (Installation)
+## 📥 Downloads & Installation
 
-### 🐧 برای اوبونتو و دبیان (Debian / Ubuntu)
+### 🐧 Ubuntu & Debian (Debian Package `.deb`)
 
-#### روش ۱: پکیج استاندارد `.deb` (ساده‌ترین روش)
-از صفحه [Releases](https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker/releases) آخرین فایل `.deb` را دانلود کنید:
+#### Recommended: 1-Click Debian Package
+Download the latest `.deb` package from the [Releases](https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker/releases) page:
 ```bash
 sudo apt install ./persian-calendar_*.deb
 ```
-> با این دستور، فایل اجرایی، آیکون اختصاصی، فونت‌های لحظه و شورتکات دسکتاپ در مسیرهای سیستمی ثبت می‌شوند.
+> This automatically installs the binary to `/usr/bin/`, sets up the desktop launcher in the GNOME App Grid, installs the app icon, and registers the Lahzeh fonts system-wide.
 
-#### روش ۲: نصب از طریق اسکریپت (بدون نیاز به دسترسی روت)
+#### Option 2: Script-Based User Installation
 ```bash
 git clone https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker.git
 cd jalali-calendar-worktime-tracker
@@ -63,17 +71,18 @@ cd jalali-calendar-worktime-tracker
 
 ---
 
-### 🪟 برای ویندوز (Windows 10 / 11)
+### 🪟 Windows (Windows 10 / 11)
 
-1. از صفحه [Releases](https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker/releases) فایل `persian-calendar_*_windows_amd64.zip` را دانلود و استخراج (Unzip) کنید.
-2. روی فایل **`install-windows.bat`** راست‌کلیک کرده و Run کنید.
-3. میانبر برنامه روی دسکتاپ و منوی استارت ایجاد شده و برنامه با بالا آمدن ویندوز در System Tray فعال خواهد بود.
+1. Download `persian-calendar_*_windows_amd64.zip` from [Releases](https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker/releases).
+2. Extract the ZIP archive.
+3. Right-click **`install-windows.bat`** and click **Run**.
+4. Shortcuts will be created on your Desktop and Start Menu, and autostart in the background on login will be enabled.
 
 ---
 
-### 🍎 برای مک او اس (macOS)
+### 🍎 macOS
 
-فایل `persian-calendar_*_darwin_arm64.tar.gz` (برای تراشه‌های M1 تا M4) یا `amd64` (برای پردازنده‌های Intel) را دانلود کرده و استخراج کنید:
+Download `persian-calendar_*_darwin_arm64.tar.gz` (for Apple Silicon M1–M4) or `amd64` (for Intel):
 ```bash
 tar -xzf persian-calendar_*_darwin_*.tar.gz
 ./persian-calendar
@@ -81,92 +90,91 @@ tar -xzf persian-calendar_*_darwin_*.tar.gz
 
 ---
 
-## 🛠 کامپایل از روی سورس (Build from Source)
+## 🛠 Building from Source
 
-پیش‌نیازها: نصب بودن [Go 1.22+](https://go.dev/)
+Prerequisites: [Go 1.22+](https://go.dev/)
 
 ```bash
-# کلون کردن ریپازیتوری
 git clone https://github.com/mohammad-h-fathi/jalali-calendar-worktime-tracker.git
 cd jalali-calendar-worktime-tracker
 
-# بیلد نسخه لینوکس:
+# Build Linux binary:
 go build -o bin/persian-calendar ./cmd/persian-calendar
 
-# کراس کامپایل برای ویندوز (بدون نیاز به CGO):
+# Cross-compile for Windows (CGO-free):
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/persian-calendar.exe ./cmd/persian-calendar
 
-# کراس کامپایل برای مک (Apple Silicon):
+# Cross-compile for macOS (Apple Silicon):
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/persian-calendar-darwin-arm64 ./cmd/persian-calendar
 ```
 
 ---
 
-## 🚀 اجرای برنامه در خط فرمان
+## 🚀 CLI Usage & Flags
 
 ```bash
-# اجرای کامل (باز شدن داشبورد در پنجره مستقل):
+# Launch full application (opens dashboard window):
 persian-calendar
 
-# اجرای پس‌زمینه (تنها حضور در نوار بالای اوبونتو / Tray بدون باز شدن پنجره اولیه):
+# Launch in background daemon mode (top-bar indicator only, without opening window):
 persian-calendar --no-window
 
-# مشخص کردن پورت دلخواه (پیش‌فرض: 41890):
+# Specify custom port (default: 41890):
 persian-calendar --port=45000
 ```
 
 ---
 
-## 📡 REST API & SSE Endpoints
+## 📡 REST API & Realtime SSE Endpoints
 
-برنامه یک سرور سبک و سریع محلی اجرا می‌کند:
+The embedded server exposes a fast local HTTP & SSE API:
 
-| آدرس (Endpoint) | متد | شرح عملکرد |
+| Endpoint | Method | Description |
 | :--- | :---: | :--- |
-| `/api/today` | `GET` | دریافت تاریخ امروز خورشیدی، رویدادها، وضعیت تایمر و تسک‌ها |
-| `/api/calendar/month?year=1405&month=8` | `GET` | ماتریس کامل روزهای ماه به همراه رویدادها و ساعت کارکرد |
-| `/api/tasks` | `GET / POST` | دریافت لیست وظایف یا ایجاد کار جدید |
-| `/api/tasks/{id}/toggle` | `POST` | تغییر وضعیت تکمیل وظیفه |
-| `/api/timer` | `GET` | وضعیت زنده تایمر و ثانیه‌های سپری‌شده |
-| `/api/timer/start` | `POST` | شروع زمان‌سنج برای یک پروژه |
-| `/api/timer/pause` | `POST` | توقف موقت زمان‌سنج |
-| `/api/timer/resume` | `POST` | ادامه مجدد زمان‌سنج |
-| `/api/timer/stop` | `POST` | پایان و ثبت قطعی سشن کارکرد |
-| `/api/timer/floating/open` | `POST` | باز کردن ویجت کپسول شناور بدون قاب |
-| `/api/events/stream` | `GET` | استریم بلادرنگ Server-Sent Events (SSE) برای همگام‌سازی لحظه‌ای |
+| `/api/today` | `GET` | Current Jalali date info, events, active timer state, and task counts |
+| `/api/calendar/month?year=1405&month=8` | `GET` | Full monthly days grid with events and work seconds per day |
+| `/api/tasks` | `GET / POST` | List tasks or create a new task |
+| `/api/tasks/{id}/toggle` | `POST` | Toggle task completion status |
+| `/api/timer` | `GET` | Active stopwatch status and elapsed seconds |
+| `/api/timer/start` | `POST` | Start timer for a project |
+| `/api/timer/pause` | `POST` | Pause running timer |
+| `/api/timer/resume` | `POST` | Resume paused timer |
+| `/api/timer/stop` | `POST` | Stop timer and save work session |
+| `/api/timer/floating/open` | `POST` | Launch borderless floating pill widget |
+| `/api/events/stream` | `GET` | Real-time Server-Sent Events (SSE) broadcast channel |
 
 ---
 
-## 📂 ساختار ماژولار پروژه
+## 📂 Modular Architecture
 
 ```text
 jalali-calendar-worktime-tracker/
 ├── .github/workflows/
-│   └── release.yml          # اکشن خودکار بیلد و ساخت پکیج‌های چندسکویی
+│   └── release.yml          # GitHub Actions multi-platform automated release matrix
 ├── cmd/
 │   └── persian-calendar/
-│       └── main.go          # نقطه ورود اصلی برنامه
+│       └── main.go          # Main entrypoint and lifecycle coordinator
 ├── internal/
-│   ├── calendar/            # موتور محاسبات نجومی جلالی، سال‌های کبیسه و مناسبت‌ها
-│   ├── models/              # تعریف ساختارهای داده Task, WorkSession, Project
-│   ├── server/              # سرور HTTP تعبیه‌شده و استریم رویدادهای SSE
-│   ├── storage/             # سیستم ذخیره‌سازی اتمیک و امن
-│   ├── todo/                # سرویس مدیریت وظایف
-│   ├── tracker/             # سرویس زمان‌سنج و تحلیل کارکرد
-│   ├── tray/                # هندلر D-Bus StatusNotifierItem نوار بالای لینوکس و Tray ویندوز
-│   └── ui/                  # لانچر پنجره و مدیریت تایمر شناور
+│   ├── calendar/            # Astronomical Jalali engine, leap years, and iran.ir API
+│   ├── models/              # Data models (Task, WorkSession, Project, ActiveTimer)
+│   ├── server/              # HTTP server, REST handlers, and realtime SSE hub
+│   ├── storage/             # Thread-safe atomic JSON persistence
+│   ├── todo/                # Task management domain service
+│   ├── tracker/             # Worktime stopwatch engine and daily analytics
+│   ├── tray/                # D-Bus StatusNotifierItem (Linux) and Tray (Windows)
+│   └── ui/                  # Native dashboard launcher and floating pill controller
 ├── scripts/
-│   ├── floating_timer.py    # ویجت کپسول شناور بدون قاب برای لینوکس (GTK 3)
-│   ├── floating_timer.ps1   # ویجت کپسول شناور بدون قاب برای ویندوز (WPF)
-│   ├── install-desktop.sh   # نصاب دسکتاپ لینوکس
-│   ├── install-windows.bat  # نصاب ۱ کلیکی ویندوز
-│   └── package-deb.sh       # اسکریپت ساخت پکیج Debian .deb
-├── fonts/                   # خانواده فونت فارسی «لحظه» در ۹ وزن
-└── web/                     # دارایی‌های تعبیه‌شده وب (HTML5, Vanilla CSS, JS)
+│   ├── floating_timer.py    # Borderless GTK 3 floating pill widget for Linux
+│   ├── floating_timer.ps1   # Borderless WPF floating pill widget for Windows
+│   ├── install-desktop.sh   # Linux user desktop installer
+│   ├── install-windows.bat  # Windows 1-click installer
+│   └── package-deb.sh       # Debian .deb package generator
+├── fonts/                   # Full 9-weight Lahzeh (لحظه) Persian TTF font family
+└── web/                     # Embedded static assets (HTML5, Vanilla CSS, JS)
 ```
 
 ---
 
-## 📄 لایسنس (License)
+## 📄 License
 
-این پروژه تحت مجوز **MIT** منتشر شده است و استفاده، توسعه و بازتوزیع آن کاملاً آزاد و رایگان است.
+This project is licensed under the [MIT License](LICENSE). Free for personal and commercial use.
