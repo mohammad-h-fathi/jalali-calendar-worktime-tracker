@@ -150,6 +150,7 @@ class FloatingPill(Gtk.Window):
         self.is_paused = False
         self.elapsed = 0
         self.project_name = "پروژه عمومی"
+        self.failed_polls = 0
 
         # Build UI
         self.event_box = Gtk.EventBox()
@@ -240,10 +241,14 @@ class FloatingPill(Gtk.Window):
                     safe_quit()
                     return False
 
+                self.failed_polls = 0
                 self.update_view()
         except Exception as e:
-            # Backend not reachable or error
-            pass
+            self.failed_polls += 1
+            if self.failed_polls >= 5:
+                print("Backend server unreachable. Closing floating pill.")
+                safe_quit()
+                return False
         return True
 
     def update_view(self):

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"persian_cal/internal/calendar"
 	"persian_cal/internal/models"
 	"persian_cal/internal/storage"
 )
@@ -28,6 +29,13 @@ func (s *TaskService) GetTasks(jalaliDate string, completed *bool) []models.Task
 func (s *TaskService) CreateTask(t models.Task) (models.Task, error) {
 	if t.Title == "" {
 		return t, fmt.Errorf("عنوان وظیفه نمی‌تواند خالی باشد")
+	}
+	if t.JalaliDate != "" {
+		parsedDate, err := calendar.ParseISO(t.JalaliDate)
+		if err != nil {
+			return t, fmt.Errorf("تاریخ وظیفه نامعتبر است: %w", err)
+		}
+		t.JalaliDate = parsedDate.FormatISO()
 	}
 	if t.Priority == "" {
 		t.Priority = models.PriorityMedium

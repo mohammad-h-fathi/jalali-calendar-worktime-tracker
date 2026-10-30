@@ -95,7 +95,12 @@ func (w *WorktimeService) Pause() (*models.ActiveTimer, error) {
 		return &current, nil
 	}
 
-	current.AccumulatedSeconds += int64(time.Since(current.LastResumedAt).Seconds())
+	elapsedMs := time.Since(current.LastResumedAt).Milliseconds()
+	if current.AccumulatedMs == 0 && current.AccumulatedSeconds > 0 {
+		current.AccumulatedMs = current.AccumulatedSeconds * 1000
+	}
+	current.AccumulatedMs += elapsedMs
+	current.AccumulatedSeconds = current.AccumulatedMs / 1000
 	current.IsPaused = true
 
 	if err := w.store.SaveActiveTimer(current); err != nil {
@@ -131,6 +136,7 @@ func (w *WorktimeService) Resume() (*models.ActiveTimer, error) {
 }
 
 // Stop finishes the current timer and saves it as a WorkSession.
+// If the session crossed midnight, it splits it across calendar days.
 func (w *WorktimeService) Stop() (*models.WorkSession, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -143,33 +149,86 @@ func (w *WorktimeService) Stop() (*models.WorkSession, error) {
 	totalSeconds := current.ElapsedSeconds()
 	now := time.Now()
 
-	var session *models.WorkSession
-	// If at least 5 seconds were tracked, save it as a session
+	var lastSession *models.WorkSession
+	// If at least 5 seconds were tracked, save session(s)
 	if totalSeconds >= 5 {
-		jDate := calendar.FromTime(current.StartedAt).FormatISO()
-		sess := models.WorkSession{
-			Project:         current.Project,
-			TaskID:          current.TaskID,
-			Description:     current.Description,
-			JalaliDate:      jDate,
-			StartTime:       current.StartedAt,
-			EndTime:         now,
-			DurationSeconds: totalSeconds,
-			IsManual:        false,
-			Color:           current.Color,
-		}
+		startDay := calendar.FromTime(current.StartedAt).FormatISO()
+		endDay := calendar.FromTime(now).FormatISO()
 
-		if err := w.store.SaveSession(sess); err != nil {
-			return nil, err
+		if startDay == endDay {
+			sess := models.WorkSession{
+				Project:         current.Project,
+				TaskID:          current.TaskID,
+				Description:     current.Description,
+				JalaliDate:      startDay,
+				StartTime:       current.StartedAt,
+				EndTime:         now,
+				DurationSeconds: totalSeconds,
+				IsManual:        false,
+				Color:           current.Color,
+			}
+			if err := w.store.SaveSession(sess); err != nil {
+				return nil, err
+			}
+			lastSession = &sess
+		} else {
+			// Crosses midnight: split session into daily intervals
+			totalWallSec := int64(now.Sub(current.StartedAt).Seconds())
+			if totalWallSec <= 0 {
+				totalWallSec = totalSeconds
+			}
+
+			curStart := current.StartedAt
+			remainingTracked := totalSeconds
+
+			for curStart.Before(now) {
+				nextMidnight := time.Date(curStart.Year(), curStart.Month(), curStart.Day(), 0, 0, 0, 0, curStart.Location()).AddDate(0, 0, 1)
+				sliceEnd := now
+				if nextMidnight.Before(now) {
+					sliceEnd = nextMidnight
+				}
+
+				sliceWallSec := int64(sliceEnd.Sub(curStart).Seconds())
+				sliceTrackedSec := int64(0)
+				if nextMidnight.Before(now) {
+					sliceTrackedSec = sliceWallSec * totalSeconds / totalWallSec
+					if sliceTrackedSec > remainingTracked {
+						sliceTrackedSec = remainingTracked
+					}
+					remainingTracked -= sliceTrackedSec
+				} else {
+					sliceTrackedSec = remainingTracked
+				}
+
+				if sliceTrackedSec > 0 {
+					jDate := calendar.FromTime(curStart).FormatISO()
+					sess := models.WorkSession{
+						Project:         current.Project,
+						TaskID:          current.TaskID,
+						Description:     current.Description,
+						JalaliDate:      jDate,
+						StartTime:       curStart,
+						EndTime:         sliceEnd,
+						DurationSeconds: sliceTrackedSec,
+						IsManual:        false,
+						Color:           current.Color,
+					}
+					if err := w.store.SaveSession(sess); err != nil {
+						return nil, err
+					}
+					lastSession = &sess
+				}
+
+				curStart = sliceEnd
+			}
 		}
-		session = &sess
 	}
 
 	cleared := models.ActiveTimer{IsRunning: false}
 	_ = w.store.SaveActiveTimer(cleared)
 
 	w.notify("stop", cleared)
-	return session, nil
+	return lastSession, nil
 }
 
 // GetStatus returns the active timer and current elapsed seconds.

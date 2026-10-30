@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -88,7 +89,37 @@ func (s *Store) load() error {
 
 	var payload DataPayload
 	if err := json.Unmarshal(b, &payload); err != nil {
-		return fmt.Errorf("corrupt store data: %w", err)
+		log.Printf("Warning: Corrupt data file %s: %v", s.filePath, err)
+		// Check for .bak file
+		bakFile := s.filePath + ".bak"
+		if bakBytes, bakErr := os.ReadFile(bakFile); bakErr == nil {
+			var bakPayload DataPayload
+			if bakUnmarshalErr := json.Unmarshal(bakBytes, &bakPayload); bakUnmarshalErr == nil {
+				log.Printf("Successfully restored store data from backup %s", bakFile)
+				s.data = bakPayload
+				corruptFile := fmt.Sprintf("%s.corrupt-%d", s.filePath, time.Now().Unix())
+				_ = os.Rename(s.filePath, corruptFile)
+				return nil
+			}
+		}
+
+		// Quarantine corrupt file
+		corruptFile := fmt.Sprintf("%s.corrupt-%d", s.filePath, time.Now().Unix())
+		_ = os.Rename(s.filePath, corruptFile)
+		log.Printf("Moved corrupt data file to %s, starting with defaults", corruptFile)
+
+		s.data = DataPayload{
+			Projects: []models.Project{
+				{ID: "proj-1", Name: "پروژه عمومی", Color: "#3b82f6", CreatedAt: time.Now()},
+				{ID: "proj-2", Name: "توسعه نرم‌افزار", Color: "#10b981", CreatedAt: time.Now()},
+				{ID: "proj-3", Name: "جلسات و هماهنگی", Color: "#f59e0b", CreatedAt: time.Now()},
+				{ID: "proj-4", Name: "مطالعه و پژوهش", Color: "#8b5cf6", CreatedAt: time.Now()},
+			},
+			Tasks:    make([]models.Task, 0),
+			Sessions: make([]models.WorkSession, 0),
+		}
+		_ = s.saveLocked()
+		return nil
 	}
 
 	s.data = payload
@@ -105,21 +136,58 @@ func (s *Store) load() error {
 	return nil
 }
 
-func (s *Store) save() error {
+func (s *Store) saveLocked() error {
 	b, err := json.MarshalIndent(s.data, "", "  ")
 	if err != nil {
 		return err
 	}
 
 	tmpFile := s.filePath + ".tmp"
-	if err := os.WriteFile(tmpFile, b, 0644); err != nil {
+	f, err := os.OpenFile(tmpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
 		return err
+	}
+	if _, err := f.Write(b); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	// Maintain a backup of the current valid file before overwriting
+	bakFile := s.filePath + ".bak"
+	if _, err := os.Stat(s.filePath); err == nil {
+		_ = os.Rename(s.filePath, bakFile)
 	}
 
 	return os.Rename(tmpFile, s.filePath)
 }
 
+func (s *Store) save() error {
+	return s.saveLocked()
+}
+
 // --- Task Operations ---
+
+func priorityRank(p models.TaskPriority) int {
+	switch p {
+	case models.PriorityUrgent:
+		return 4
+	case models.PriorityHigh:
+		return 3
+	case models.PriorityMedium:
+		return 2
+	case models.PriorityLow:
+		return 1
+	default:
+		return 0
+	}
+}
 
 func (s *Store) GetTasks(filterDate string, completed *bool) []models.Task {
 	s.mu.RLock()
@@ -136,10 +204,15 @@ func (s *Store) GetTasks(filterDate string, completed *bool) []models.Task {
 		result = append(result, t)
 	}
 
-	// Sort: incomplete first, then by priority, then by creation
+	// Sort: incomplete first, then by priority (urgent -> high -> medium -> low), then by creation
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].Completed != result[j].Completed {
 			return !result[i].Completed
+		}
+		pI := priorityRank(result[i].Priority)
+		pJ := priorityRank(result[j].Priority)
+		if pI != pJ {
+			return pI > pJ
 		}
 		return result[i].CreatedAt.After(result[j].CreatedAt)
 	})

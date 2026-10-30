@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -25,19 +27,37 @@ func main() {
 	noWindow := flag.Bool("no-window", false, "Start in background top-bar daemon mode without opening window")
 	flag.Parse()
 
+	appURL := fmt.Sprintf("http://127.0.0.1:%d", *port)
+	launcher := ui.NewLauncher(appURL)
+
+	// 1. Single-instance check: if app is already running, open window for the running instance and exit
+	client := &http.Client{Timeout: 800 * time.Millisecond}
+	resp, err := client.Get(fmt.Sprintf("%s/api/today", appURL))
+	if err == nil && resp.StatusCode == http.StatusOK {
+		_ = resp.Body.Close()
+		log.Printf("An instance of Persian Calendar is already running on %s", appURL)
+		if !*noWindow {
+			_, _ = client.Post(fmt.Sprintf("%s/api/window/open", appURL), "application/json", nil)
+			if err := launcher.Open(); err != nil {
+				log.Printf("Could not auto-open window: %v", err)
+			}
+		}
+		os.Exit(0)
+	}
+
 	log.Println("Starting Persian Calendar & Worktime Tracker...")
 
-	// 1. Initialize persistent storage
+	// 2. Initialize persistent storage
 	store, err := storage.NewStore()
 	if err != nil {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
 
-	// 2. Initialize domain services
+	// 3. Initialize domain services
 	workTracker := tracker.NewWorktimeService(store)
 	taskTodo := todo.NewTaskService(store)
 
-	// 3. Initialize Top-Bar Tray Indicator
+	// 4. Initialize Top-Bar Tray Indicator
 	now := time.Now()
 	jDate := calendar.FromTime(now)
 	initialTitle := fmt.Sprintf("%s %s %s", calendar.ToPersianDigits(fmt.Sprintf("%d", jDate.Day)), jDate.MonthName(), calendar.ToPersianDigits(fmt.Sprintf("%d", jDate.Year)))
@@ -50,9 +70,7 @@ func main() {
 		log.Printf("Top-bar indicator registered with title: %s", initialTitle)
 	}
 
-	// 4. Initialize Desktop Window Launcher & Floating Pill Launcher
-	appURL := fmt.Sprintf("http://127.0.0.1:%d", *port)
-	launcher := ui.NewLauncher(appURL)
+	// 5. Initialize Desktop Window Launcher & Floating Pill Launcher
 	floatingLauncher := ui.NewFloatingLauncher(appURL)
 
 	// Automatically open borderless floating pill when timer starts, and close when stops
@@ -63,6 +81,25 @@ func main() {
 			_ = floatingLauncher.Close()
 		}
 	})
+
+	var srv *server.Server
+
+	var shutdownOnce sync.Once
+	cleanup := func() {
+		shutdownOnce.Do(func() {
+			log.Println("Shutting down...")
+			if floatingLauncher != nil {
+				_ = floatingLauncher.Close()
+			}
+			if srv != nil {
+				_ = srv.Stop()
+			}
+			if trayCtrl != nil {
+				trayCtrl.Close()
+			}
+			os.Exit(0)
+		})
+	}
 
 	if trayCtrl != nil {
 		trayCtrl.SetOnActivate(func() {
@@ -86,12 +123,13 @@ func main() {
 		trayCtrl.SetOnShowFloating(func() {
 			_ = floatingLauncher.Open()
 		})
+		trayCtrl.SetOnExit(cleanup)
 	}
 
-	// 5. Initialize Embedded Server
-	srv := server.NewServer(*port, store, workTracker, taskTodo, trayCtrl, floatingLauncher, web.FS)
+	// 6. Initialize Embedded Server
+	srv = server.NewServer(*port, store, workTracker, taskTodo, trayCtrl, floatingLauncher, launcher, web.FS)
 
-	// 6. Launch window if requested
+	// 7. Launch window if requested
 	if !*noWindow {
 		go func() {
 			// Small delay for server to bind
@@ -102,18 +140,12 @@ func main() {
 		}()
 	}
 
-	// 7. Handle OS Interrupts
+	// 8. Handle OS Interrupts
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
 	go func() {
 		<-sigChan
-		log.Println("Shutting down...")
-		_ = srv.Stop()
-		if trayCtrl != nil {
-			trayCtrl.Close()
-		}
-		os.Exit(0)
+		cleanup()
 	}()
 
 	log.Printf("Server listening on %s", appURL)

@@ -116,6 +116,31 @@ class AppController {
       }
     });
 
+    this.sse.addEventListener('session_deleted', () => {
+      if (window.worktimeModule) window.worktimeModule.loadDailySummary();
+      if (window.calendarModule) {
+        window.calendarModule.loadMonth(window.calendarModule.currentYear, window.calendarModule.currentMonth);
+      }
+    });
+
+    this.sse.addEventListener('day_changed', async () => {
+      await this.fetchTodayInfo();
+      if (window.calendarModule) {
+        window.calendarModule.todayDate = this.todayInfo;
+        window.calendarModule.currentYear = this.todayInfo.year;
+        window.calendarModule.currentMonth = this.todayInfo.month;
+        await window.calendarModule.loadMonth(this.todayInfo.year, this.todayInfo.month);
+        window.calendarModule.selectDay(this.todayInfo.day);
+      }
+      if (window.worktimeModule) {
+        window.worktimeModule.currentDate = this.todayInfo.iso;
+        await window.worktimeModule.loadDailySummary();
+      }
+      if (window.todoModule) {
+        await window.todoModule.loadTasks();
+      }
+    });
+
     this.sse.onerror = () => {};
   }
 }

@@ -47,6 +47,15 @@ class TodoModule {
     if (!date && window.calendarModule && window.calendarModule.todayDate) {
       date = window.calendarModule.todayDate.iso;
     }
+    if (date) {
+      date = date.replace(/\//g, '-');
+      const parts = date.split('-');
+      if (parts.length !== 3 || parts[0].length !== 4 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+        alert('فرمت تاریخ نامعتبر است (مثال: ۱۴۰۳-۰۸-۰۴)');
+        return;
+      }
+      date = `${parts[0]}-${String(Number(parts[1])).padStart(2, '0')}-${String(Number(parts[2])).padStart(2, '0')}`;
+    }
     const priority = document.getElementById('newTaskPriority').value;
 
     try {
@@ -69,6 +78,9 @@ class TodoModule {
             window.calendarModule.selectDay(window.calendarModule.selectedDate.day);
           }
         }
+      } else {
+        const errTxt = await res.text();
+        alert(errTxt || 'خطا در ثبت وظیفه');
       }
     } catch (err) {
       console.error('Failed to create task:', err);

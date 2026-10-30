@@ -12,6 +12,8 @@ type TrayController interface {
 	SetOnToggleTimer(fn func())
 	// SetOnShowFloating registers the callback triggered to open the floating pill.
 	SetOnShowFloating(fn func())
+	// SetOnExit registers the callback triggered when the user clicks Exit in the menu.
+	SetOnExit(fn func())
 	// Close unregisters the indicator.
 	Close()
 }

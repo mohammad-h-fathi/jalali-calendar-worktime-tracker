@@ -131,14 +131,20 @@ persian-calendar --port=45000
 | :--- | :---: | :--- |
 | `/api/today` | `GET` | دریافت تاریخ امروز خورشیدی، رویدادها، وضعیت تایمر و تسک‌ها |
 | `/api/calendar/month?year=1405&month=8` | `GET` | ماتریس کامل روزهای ماه به همراه رویدادها و ساعت کارکرد |
-| `/api/tasks` | `GET / POST` | دریافت لیست وظایف یا ایجاد کار جدید |
+| `/api/tasks` | `GET / POST` | دریافت لیست وظایف یا ایجاد کار جدید (با اعتبارسنجی تاریخ) |
 | `/api/tasks/{id}/toggle` | `POST` | تغییر وضعیت تکمیل وظیفه |
+| `/api/tasks/{id}` | `DELETE` | حذف وظیفه |
 | `/api/timer` | `GET` | وضعیت زنده تایمر و ثانیه‌های سپری‌شده |
 | `/api/timer/start` | `POST` | شروع زمان‌سنج برای یک پروژه |
 | `/api/timer/pause` | `POST` | توقف موقت زمان‌سنج |
 | `/api/timer/resume` | `POST` | ادامه مجدد زمان‌سنج |
-| `/api/timer/stop` | `POST` | پایان و ثبت قطعی سشن کارکرد |
+| `/api/timer/stop` | `POST` | پایان و ثبت قطعی سشن کارکرد (با تفکیک عبور از نیمه‌شب) |
 | `/api/timer/floating/open` | `POST` | باز کردن ویجت کپسول شناور بدون قاب |
+| `/api/timer/floating/close` | `POST` | بستن ویجت کپسول شناور |
+| `/api/worktime/daily` | `GET` | گزارش کارکرد روزانه و تفکیک پروژه‌ها |
+| `/api/worktime/manual` | `POST` | ثبت دستی کارکرد به همراه اعتبارسنجی بازه زمانی |
+| `/api/worktime/sessions/{id}` | `DELETE` | حذف سشن کارکرد |
+| `/api/window/open` | `POST` | فوکوس یا باز کردن پنجره داشبورد |
 | `/api/events/stream` | `GET` | استریم بلادرنگ Server-Sent Events (SSE) برای همگام‌سازی لحظه‌ای |
 
 ---

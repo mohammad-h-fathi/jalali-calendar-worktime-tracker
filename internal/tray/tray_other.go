@@ -26,4 +26,6 @@ func (d *dummyTray) SetOnToggleTimer(fn func()) {}
 
 func (d *dummyTray) SetOnShowFloating(fn func()) {}
 
+func (d *dummyTray) SetOnExit(fn func()) {}
+
 func (d *dummyTray) Close() {}

@@ -1,6 +1,8 @@
 package calendar
 
 import (
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 )
@@ -51,8 +53,87 @@ func TestFromTime(t *testing.T) {
 }
 
 func TestHolidays(t *testing.T) {
+	// Use stub HTTPClient to test offline events without network call
+	oldClient := HTTPClient
+	defer func() { HTTPClient = oldClient }()
+	HTTPClient = &mockErrorHTTPClient{}
+
 	events := GetEventsForDate(1403, 1, 1)
 	if len(events) == 0 || !events[0].IsHoliday {
 		t.Fatalf("Expected Nowruz holiday on 1 Farvardin, got %v", events)
+	}
+
+	// Verify lunar holiday from offline data (Tasua on 25 Tir 1403)
+	lunarEvents := GetEventsForDate(1403, 4, 25)
+	foundTasua := false
+	for _, ev := range lunarEvents {
+		if ev.Title == "تاسوعای حسینی" && ev.IsHoliday {
+			foundTasua = true
+			break
+		}
+	}
+	if !foundTasua {
+		t.Fatalf("Expected Tasua lunar holiday on 25 Tir 1403, got %v", lunarEvents)
+	}
+}
+
+type mockErrorHTTPClient struct{}
+
+func (m *mockErrorHTTPClient) Get(url string) (*http.Response, error) {
+	return nil, fmt.Errorf("network disabled in tests")
+}
+
+func TestIsLeapYear(t *testing.T) {
+	tests := []struct {
+		year     int
+		isLeap   bool
+		daysEsf  int
+	}{
+		{1399, true, 30},
+		{1402, false, 29},
+		{1403, true, 30},
+		{1404, false, 29},
+		{1436, true, 30},
+		{1437, false, 29},
+		{1469, true, 30},
+		{1470, false, 29},
+	}
+
+	for _, tt := range tests {
+		got := IsLeapYear(tt.year)
+		if got != tt.isLeap {
+			t.Errorf("IsLeapYear(%d) = %v; want %v", tt.year, got, tt.isLeap)
+		}
+		days := DaysInMonth(tt.year, 12)
+		if days != tt.daysEsf {
+			t.Errorf("DaysInMonth(%d, 12) = %d; want %d", tt.year, days, tt.daysEsf)
+		}
+	}
+}
+
+func TestParseISO(t *testing.T) {
+	valid := []string{"1403-12-30", "1404-01-15", "1405/08/04", " 1405-01-01 "}
+	for _, s := range valid {
+		d, err := ParseISO(s)
+		if err != nil {
+			t.Errorf("ParseISO(%q) unexpected error: %v", s, err)
+		}
+		if d.Year == 0 || d.Month == 0 || d.Day == 0 {
+			t.Errorf("ParseISO(%q) invalid output: %+v", s, d)
+		}
+	}
+
+	invalid := []string{
+		"1404-12-30", // 1404 is common year, Esfand has 29 days
+		"1405-13-01", // month 13
+		"1405-02-32", // day 32
+		"1405-07-31", // Mehr only has 30 days
+		"bad-string",
+		"1405",
+	}
+	for _, s := range invalid {
+		if _, err := ParseISO(s); err == nil {
+			t.Errorf("ParseISO(%q) expected error for invalid date, got nil", s)
+		}
 	}
 }

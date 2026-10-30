@@ -93,6 +93,8 @@ function Format-Seconds([int]$sec) {
     return ("{0:D2}:{1:D2}:{2:D2}" -f $h, $m, $s)
 }
 
+$script:failedPolls = 0
+
 function Update-State {
     try {
         $resp = Invoke-RestMethod -Uri "$ServerUrl/api/timer" -Method Get -TimeoutSec 2
@@ -104,6 +106,7 @@ function Update-State {
             return
         }
 
+        $script:failedPolls = 0
         $script:isRunning = $timer.is_running
         $script:isPaused = $timer.is_paused
 
@@ -111,7 +114,7 @@ function Update-State {
         $clockText.Text = To-PersianDigits (Format-Seconds $elapsed)
 
         if ($script:isPaused) {
-            $dot.Fill = [System.Windows.Media.Brushes]::Amber
+            $dot.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F59E0B")
             $pauseResumeBtn.Content = "ادامه ▶"
             $pauseResumeBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#34D399")
             $pauseResumeBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3310B981")
@@ -122,7 +125,11 @@ function Update-State {
             $pauseResumeBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#33F59E0B")
         }
     } catch {
-        # Keep running
+        $script:failedPolls++
+        if ($script:failedPolls -ge 5) {
+            $window.Close()
+            return
+        }
     }
 }
 

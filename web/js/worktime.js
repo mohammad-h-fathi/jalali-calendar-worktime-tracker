@@ -217,33 +217,48 @@ class WorktimeModule {
     const endTimeStr = document.getElementById('manualEndTime').value;
     const desc = document.getElementById('manualDesc').value.trim();
 
-    const selectedOpt = document.querySelector('#manualProjectSelect option:checked');
-    const color = selectedOpt ? selectedOpt.dataset.color : '#3b82f6';
+    if (!jalaliDate) {
+      alert('لطفاً تاریخ را وارد کنید');
+      return;
+    }
+    if (!startTimeStr || !endTimeStr) {
+      alert('لطفاً زمان شروع و پایان را وارد کنید');
+      return;
+    }
 
     const [sh, sm] = startTimeStr.split(':').map(Number);
     const [eh, em] = endTimeStr.split(':').map(Number);
 
-    let durationSec = ((eh * 60 + em) - (sh * 60 + sm)) * 60;
-    if (durationSec <= 0) durationSec = 3600;
+    const startMinutes = sh * 60 + sm;
+    const endMinutes = eh * 60 + em;
 
-    const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sh, sm);
-    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), eh, em);
+    if (endMinutes <= startMinutes) {
+      alert('زمان پایان باید بعد از زمان شروع باشد');
+      return;
+    }
+
+    const durationSec = (endMinutes - startMinutes) * 60;
 
     try {
-      await fetch('/api/worktime/manual', {
+      const res = await fetch('/api/worktime/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project: project,
           description: desc,
           jalali_date: jalaliDate,
-          start_time: startDate.toISOString(),
-          end_time: endDate.toISOString(),
+          start_time: startTimeStr,
+          end_time: endTimeStr,
           duration_seconds: durationSec,
           color: color,
         }),
       });
+
+      if (!res.ok) {
+        const errTxt = await res.text();
+        alert(errTxt || 'خطا در ثبت سشن دستی');
+        return;
+      }
 
       document.getElementById('manualLogModal').style.display = 'none';
       document.getElementById('manualDesc').value = '';
@@ -397,12 +412,21 @@ class WorktimeModule {
   async deleteSession(id) {
     if (!confirm('آیا از حذف این سشن اطمینان دارید؟')) return;
     try {
-      await fetch(`/api/worktime/daily`);
-      await this.loadDailySummary();
-      if (window.calendarModule) {
-        window.calendarModule.loadMonth(window.calendarModule.currentYear, window.calendarModule.currentMonth);
+      const res = await fetch(`/api/worktime/sessions/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await this.loadDailySummary();
+        if (window.calendarModule) {
+          window.calendarModule.loadMonth(window.calendarModule.currentYear, window.calendarModule.currentMonth);
+        }
+      } else {
+        const errTxt = await res.text();
+        alert(errTxt || 'خطا در حذف سشن');
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+    }
   }
 }
 

@@ -2,6 +2,7 @@ package calendar
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,10 +34,13 @@ type JalaliDate struct {
 }
 
 // IsLeapYear returns true if the specified Jalali year is a leap year.
+// Derived directly from the conversion functions so the two can never disagree.
 func IsLeapYear(jy int) bool {
-	// Standard astronomical / Birashk 33-year cycle approximation
-	rem := (jy + 38) * 31 % 128
-	return rem < 31
+	y1, m1, d1 := JalaliToGregorian(jy, 1, 1)
+	y2, m2, d2 := JalaliToGregorian(jy+1, 1, 1)
+	a := time.Date(y1, time.Month(m1), d1, 0, 0, 0, 0, time.UTC)
+	b := time.Date(y2, time.Month(m2), d2, 0, 0, 0, 0, time.UTC)
+	return b.Sub(a) == 366*24*time.Hour
 }
 
 // DaysInMonth returns number of days in the specified Jalali year and month.
@@ -199,3 +203,41 @@ func ToPersianDigits(s string) string {
 	}
 	return sb.String()
 }
+
+// ParseISO parses and strictly validates a Jalali date string in "YYYY-MM-DD" or "YYYY/MM/DD" format.
+func ParseISO(s string) (JalaliDate, error) {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, "/", "-")
+	parts := strings.Split(s, "-")
+	if len(parts) != 3 {
+		return JalaliDate{}, fmt.Errorf("فرمت تاریخ نامعتبر است (باید YYYY-MM-DD باشد): %s", s)
+	}
+
+	y, err := strconv.Atoi(parts[0])
+	if err != nil || y < 1000 || y > 3000 {
+		return JalaliDate{}, fmt.Errorf("سال نامعتبر است: %s", parts[0])
+	}
+
+	m, err := strconv.Atoi(parts[1])
+	if err != nil || m < 1 || m > 12 {
+		return JalaliDate{}, fmt.Errorf("ماه نامعتبر است (باید بین ۱ تا ۱۲ باشد): %s", parts[1])
+	}
+
+	maxDays := DaysInMonth(y, m)
+	d, err := strconv.Atoi(parts[2])
+	if err != nil || d < 1 || d > maxDays {
+		return JalaliDate{}, fmt.Errorf("روز نامعتبر است (برای این ماه باید بین ۱ تا %d باشد): %s", maxDays, parts[2])
+	}
+
+	// Calculate weekday
+	t := (JalaliDate{Year: y, Month: m, Day: d}).ToTime(time.Local)
+	weekday := (int(t.Weekday()) + 1) % 7
+
+	return JalaliDate{
+		Year:    y,
+		Month:   m,
+		Day:     d,
+		Weekday: weekday,
+	}, nil
+}
+

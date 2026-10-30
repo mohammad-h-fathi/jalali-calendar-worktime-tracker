@@ -22,15 +22,17 @@ type APIHandler struct {
 	todo             *todo.TaskService
 	sseHub           *SSEHub
 	floatingLauncher *ui.FloatingPillLauncher
+	windowLauncher   *ui.WindowLauncher
 }
 
-func NewAPIHandler(store *storage.Store, tracker *tracker.WorktimeService, todo *todo.TaskService, sseHub *SSEHub, floatingLauncher *ui.FloatingPillLauncher) *APIHandler {
+func NewAPIHandler(store *storage.Store, tracker *tracker.WorktimeService, todo *todo.TaskService, sseHub *SSEHub, floatingLauncher *ui.FloatingPillLauncher, windowLauncher *ui.WindowLauncher) *APIHandler {
 	return &APIHandler{
 		store:            store,
 		tracker:          tracker,
 		todo:             todo,
 		sseHub:           sseHub,
 		floatingLauncher: floatingLauncher,
+		windowLauncher:   windowLauncher,
 	}
 }
 
@@ -297,24 +299,141 @@ func (h *APIHandler) handleTimerStop(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(session)
 }
 
+func (h *APIHandler) handleWindowOpen(w http.ResponseWriter, r *http.Request) {
+	if h.windowLauncher != nil {
+		_ = h.windowLauncher.Open()
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *APIHandler) handleWorkSessionItem(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/api/worktime/sessions/")
+	id = strings.TrimSpace(id)
+	if id == "" {
+		http.Error(w, "شناسه سشن الزامی است", http.StatusBadRequest)
+		return
+	}
+
+	if r.Method == http.MethodDelete {
+		if err := h.store.DeleteSession(id); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		h.sseHub.Broadcast("session_deleted", id)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+}
+
+type manualSessionRequest struct {
+	ID              string  `json:"id"`
+	Project         string  `json:"project"`
+	TaskID          *string `json:"task_id"`
+	Description     string  `json:"description"`
+	JalaliDate      string  `json:"jalali_date"`
+	StartTime       string  `json:"start_time"`
+	EndTime         string  `json:"end_time"`
+	DurationSeconds int64   `json:"duration_seconds"`
+	Color           string  `json:"color"`
+}
+
+func parseTimeComponent(s string) (int, int, error) {
+	s = strings.TrimSpace(s)
+	if strings.Contains(s, "T") {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			return t.Hour(), t.Minute(), nil
+		}
+		if t, err := time.Parse("2006-01-02T15:04", s); err == nil {
+			return t.Hour(), t.Minute(), nil
+		}
+	}
+	parts := strings.Split(s, ":")
+	if len(parts) < 2 {
+		return 0, 0, fmt.Errorf("invalid time format: %s", s)
+	}
+	h, err := strconv.Atoi(parts[0])
+	if err != nil || h < 0 || h > 23 {
+		return 0, 0, fmt.Errorf("invalid hour: %s", parts[0])
+	}
+	m, err := strconv.Atoi(parts[1])
+	if err != nil || m < 0 || m > 59 {
+		return 0, 0, fmt.Errorf("invalid minute: %s", parts[1])
+	}
+	return h, m, nil
+}
+
 func (h *APIHandler) handleManualWorktime(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var sess models.WorkSession
-	if err := json.NewDecoder(r.Body).Decode(&sess); err != nil {
+
+	var req manualSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sess.IsManual = true
-	if sess.DurationSeconds <= 0 && !sess.StartTime.IsZero() && !sess.EndTime.IsZero() {
-		sess.DurationSeconds = int64(sess.EndTime.Sub(sess.StartTime).Seconds())
+
+	jDate, err := calendar.ParseISO(req.JalaliDate)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("تاریخ جلالی نامعتبر است: %v", err), http.StatusBadRequest)
+		return
 	}
+
+	sh, sm, err := parseTimeComponent(req.StartTime)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("زمان شروع نامعتبر است: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	eh, em, err := parseTimeComponent(req.EndTime)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("زمان پایان نامعتبر است: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	baseGreg := jDate.ToTime(time.Local)
+	startT := time.Date(baseGreg.Year(), baseGreg.Month(), baseGreg.Day(), sh, sm, 0, 0, time.Local)
+	endT := time.Date(baseGreg.Year(), baseGreg.Month(), baseGreg.Day(), eh, em, 0, 0, time.Local)
+
+	if !endT.After(startT) {
+		http.Error(w, "زمان پایان باید بعد از زمان شروع باشد", http.StatusBadRequest)
+		return
+	}
+
+	duration := int64(endT.Sub(startT).Seconds())
+	if duration <= 0 {
+		http.Error(w, "مدت زمان کارکرد باید بیشتر از صفر باشد", http.StatusBadRequest)
+		return
+	}
+
+	if req.Project == "" {
+		req.Project = "پروژه عمومی"
+	}
+	if req.Color == "" {
+		req.Color = "#3b82f6"
+	}
+
+	// Always assign a new ID to prevent overwriting existing sessions
+	sess := models.WorkSession{
+		Project:         req.Project,
+		TaskID:          req.TaskID,
+		Description:     req.Description,
+		JalaliDate:      jDate.FormatISO(),
+		StartTime:       startT,
+		EndTime:         endT,
+		DurationSeconds: duration,
+		IsManual:        true,
+		Color:           req.Color,
+	}
+
 	if err := h.store.SaveSession(sess); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	h.sseHub.Broadcast("session_added", sess)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(sess)

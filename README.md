@@ -133,14 +133,20 @@ The embedded server exposes a fast local HTTP & SSE API:
 | :--- | :---: | :--- |
 | `/api/today` | `GET` | Current Jalali date info, events, active timer state, and task counts |
 | `/api/calendar/month?year=1405&month=8` | `GET` | Full monthly days grid with events and work seconds per day |
-| `/api/tasks` | `GET / POST` | List tasks or create a new task |
+| `/api/tasks` | `GET / POST` | List tasks or create a new task (with date validation) |
 | `/api/tasks/{id}/toggle` | `POST` | Toggle task completion status |
+| `/api/tasks/{id}` | `DELETE` | Delete a task |
 | `/api/timer` | `GET` | Active stopwatch status and elapsed seconds |
 | `/api/timer/start` | `POST` | Start timer for a project |
 | `/api/timer/pause` | `POST` | Pause running timer |
 | `/api/timer/resume` | `POST` | Resume paused timer |
-| `/api/timer/stop` | `POST` | Stop timer and save work session |
+| `/api/timer/stop` | `POST` | Stop timer and save work session (with midnight crossing split) |
 | `/api/timer/floating/open` | `POST` | Launch borderless floating pill widget |
+| `/api/timer/floating/close` | `POST` | Close borderless floating pill widget |
+| `/api/worktime/daily` | `GET` | Daily worktime summary and project breakdown |
+| `/api/worktime/manual` | `POST` | Log a manual work session with date & time range |
+| `/api/worktime/sessions/{id}` | `DELETE` | Delete a work session |
+| `/api/window/open` | `POST` | Focus or open the dashboard window |
 | `/api/events/stream` | `GET` | Real-time Server-Sent Events (SSE) broadcast channel |
 
 ---

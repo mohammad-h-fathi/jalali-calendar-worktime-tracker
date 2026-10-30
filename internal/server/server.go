@@ -85,9 +85,9 @@ func FormatSeconds(sec int64) string {
 }
 
 // NewServer builds the HTTP & SSE server.
-func NewServer(port int, store *storage.Store, workTracker *tracker.WorktimeService, taskTodo *todo.TaskService, trayCtrl tray.TrayController, floatingLauncher *ui.FloatingPillLauncher, embeddedFS fs.FS) *Server {
+func NewServer(port int, store *storage.Store, workTracker *tracker.WorktimeService, taskTodo *todo.TaskService, trayCtrl tray.TrayController, floatingLauncher *ui.FloatingPillLauncher, windowLauncher *ui.WindowLauncher, embeddedFS fs.FS) *Server {
 	hub := NewSSEHub()
-	handler := NewAPIHandler(store, workTracker, taskTodo, hub, floatingLauncher)
+	handler := NewAPIHandler(store, workTracker, taskTodo, hub, floatingLauncher, windowLauncher)
 
 	mux := http.NewServeMux()
 
@@ -103,8 +103,10 @@ func NewServer(port int, store *storage.Store, workTracker *tracker.WorktimeServ
 	mux.HandleFunc("/api/timer/stop", handler.handleTimerStop)
 	mux.HandleFunc("/api/timer/floating/open", handler.handleFloatingOpen)
 	mux.HandleFunc("/api/timer/floating/close", handler.handleFloatingClose)
+	mux.HandleFunc("/api/window/open", handler.handleWindowOpen)
 	mux.HandleFunc("/api/worktime/manual", handler.handleManualWorktime)
 	mux.HandleFunc("/api/worktime/daily", handler.handleDailyWorktime)
+	mux.HandleFunc("/api/worktime/sessions/", handler.handleWorkSessionItem)
 	mux.HandleFunc("/api/projects", handler.handleProjects)
 
 	// SSE event stream
@@ -140,11 +142,14 @@ func NewServer(port int, store *storage.Store, workTracker *tracker.WorktimeServ
 		}
 	})
 
-	// Static files serving: Prefer local directory if present, else fallback to embedded FS
+	// Static files serving: Prefer embedded FS; only use local ./web when developer explicitly opts in
 	var fileServer http.Handler
-	if info, err := os.Stat("web"); err == nil && info.IsDir() {
-		fileServer = http.FileServer(http.Dir("web"))
-	} else if embeddedFS != nil {
+	if os.Getenv("PERSIAN_CAL_DEV") == "1" {
+		if info, err := os.Stat("web"); err == nil && info.IsDir() {
+			fileServer = http.FileServer(http.Dir("web"))
+		}
+	}
+	if fileServer == nil && embeddedFS != nil {
 		if _, err := fs.Stat(embeddedFS, "index.html"); err == nil {
 			fileServer = http.FileServer(http.FS(embeddedFS))
 		} else if sub, err := fs.Sub(embeddedFS, "web"); err == nil {
@@ -218,19 +223,28 @@ func (s *Server) updateTrayAndBroadcast() {
 
 // Start runs the HTTP server and background tick loop.
 func (s *Server) Start() error {
-	// Background ticker for live seconds and tray update
+	// Background ticker for live seconds, tray update, and midnight day transitions
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
+
+		lastDate := calendar.FromTime(time.Now()).FormatISO()
 
 		for {
 			select {
 			case <-s.stopChan:
 				return
 			case <-ticker.C:
-				timer, _ := s.tracker.GetStatus()
-				if timer.IsRunning && !timer.IsPaused {
+				currentDate := calendar.FromTime(time.Now()).FormatISO()
+				if currentDate != lastDate {
+					lastDate = currentDate
 					s.updateTrayAndBroadcast()
+					s.sseHub.Broadcast("day_changed", map[string]string{"date": currentDate})
+				} else {
+					timer, _ := s.tracker.GetStatus()
+					if timer.IsRunning && !timer.IsPaused {
+						s.updateTrayAndBroadcast()
+					}
 				}
 			}
 		}

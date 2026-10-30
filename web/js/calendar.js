@@ -45,7 +45,10 @@ class CalendarModule {
 
     document.getElementById('quickAddTaskBtn').addEventListener('click', () => {
       window.app.switchTab('todo');
-      const iso = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(this.selectedDate.day).padStart(2, '0')}`;
+      const year = this.selectedDate ? this.selectedDate.year : this.currentYear;
+      const month = this.selectedDate ? this.selectedDate.month : this.currentMonth;
+      const day = this.selectedDate ? this.selectedDate.day : 1;
+      const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       document.getElementById('newTaskJalaliDate').value = iso;
       document.getElementById('newTaskTitle').focus();
     });
@@ -57,7 +60,10 @@ class CalendarModule {
       this.currentMonth = 12;
       this.currentYear--;
     }
-    this.loadMonth(this.currentYear, this.currentMonth);
+    this.loadMonth(this.currentYear, this.currentMonth).then(() => {
+      const day = (this.currentYear === this.todayDate.year && this.currentMonth === this.todayDate.month) ? this.todayDate.day : 1;
+      this.selectDay(day);
+    });
   }
 
   nextMonth() {
@@ -66,7 +72,10 @@ class CalendarModule {
       this.currentMonth = 1;
       this.currentYear++;
     }
-    this.loadMonth(this.currentYear, this.currentMonth);
+    this.loadMonth(this.currentYear, this.currentMonth).then(() => {
+      const day = (this.currentYear === this.todayDate.year && this.currentMonth === this.todayDate.month) ? this.todayDate.day : 1;
+      this.selectDay(day);
+    });
   }
 
   async loadMonth(year, month) {

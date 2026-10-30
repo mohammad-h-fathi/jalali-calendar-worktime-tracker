@@ -12,18 +12,19 @@ import (
 )
 
 type linuxTray struct {
-	mu            sync.RWMutex
-	conn          *dbus.Conn
-	propsSpec     *prop.Properties
-	menuPropsSpec *prop.Properties
+	mu             sync.RWMutex
+	conn           *dbus.Conn
+	propsSpec      *prop.Properties
+	menuPropsSpec  *prop.Properties
 	onActivate     func()
 	onToggleTimer  func()
 	onShowFloating func()
+	onExit         func()
 	title          string
-	tooltip       string
-	path          dbus.ObjectPath
-	menuPath      dbus.ObjectPath
-	busName       string
+	tooltip        string
+	path           dbus.ObjectPath
+	menuPath       dbus.ObjectPath
+	busName        string
 }
 
 // ToolTipStruct represents the D-Bus structure for org.kde.StatusNotifierItem.ToolTip.
@@ -195,7 +196,14 @@ func (m *menuObject) Event(id int32, eventId string, data dbus.Variant, timestam
 				go cb()
 			}
 		case 4:
-			os.Exit(0)
+			m.tray.mu.RLock()
+			cb := m.tray.onExit
+			m.tray.mu.RUnlock()
+			if cb != nil {
+				go cb()
+			} else {
+				os.Exit(0)
+			}
 		}
 	}
 	return nil
@@ -437,6 +445,12 @@ func (t *linuxTray) SetOnToggleTimer(fn func()) {
 func (t *linuxTray) SetOnShowFloating(fn func()) {
 	t.mu.Lock()
 	t.onShowFloating = fn
+	t.mu.Unlock()
+}
+
+func (t *linuxTray) SetOnExit(fn func()) {
+	t.mu.Lock()
+	t.onExit = fn
 	t.mu.Unlock()
 }
 

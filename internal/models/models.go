@@ -61,6 +61,7 @@ type ActiveTimer struct {
 	StartedAt          time.Time `json:"started_at"`
 	LastResumedAt      time.Time `json:"last_resumed_at"`
 	AccumulatedSeconds int64     `json:"accumulated_seconds"`
+	AccumulatedMs      int64     `json:"accumulated_ms,omitempty"`
 }
 
 // ElapsedSeconds returns total elapsed time including current running interval.
@@ -68,12 +69,16 @@ func (t *ActiveTimer) ElapsedSeconds() int64 {
 	if !t.IsRunning {
 		return 0
 	}
+	accMs := t.AccumulatedMs
+	if accMs == 0 && t.AccumulatedSeconds > 0 {
+		accMs = t.AccumulatedSeconds * 1000
+	}
 	if t.IsPaused {
-		return t.AccumulatedSeconds
+		return accMs / 1000
 	}
-	currentInterval := int64(time.Since(t.LastResumedAt).Seconds())
-	if currentInterval < 0 {
-		currentInterval = 0
+	currentIntervalMs := time.Since(t.LastResumedAt).Milliseconds()
+	if currentIntervalMs < 0 {
+		currentIntervalMs = 0
 	}
-	return t.AccumulatedSeconds + currentInterval
+	return (accMs + currentIntervalMs) / 1000
 }

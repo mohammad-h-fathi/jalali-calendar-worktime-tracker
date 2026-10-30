@@ -174,12 +174,7 @@ func (f *FloatingPillLauncher) IsRunning() bool {
 }
 
 func findLinuxFloatingScript() string {
-	home, _ := os.UserHomeDir()
-	candidates := []string{
-		filepath.Join(home, ".local/bin/persian-timer-pill"),
-		"scripts/floating_timer.py",
-		"../scripts/floating_timer.py",
-	}
+	var candidates []string
 
 	if execPath, err := os.Executable(); err == nil {
 		execDir := filepath.Dir(execPath)
@@ -190,23 +185,28 @@ func findLinuxFloatingScript() string {
 		)
 	}
 
+	if home, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, filepath.Join(home, ".local/bin/persian-timer-pill"))
+	}
+
+	if p, err := exec.LookPath("persian-timer-pill"); err == nil {
+		candidates = append(candidates, p)
+	}
+
+	// Development fallback
+	candidates = append(candidates, "scripts/floating_timer.py", "../scripts/floating_timer.py")
+
 	for _, c := range candidates {
 		if fi, err := os.Stat(c); err == nil && !fi.IsDir() {
 			return c
 		}
 	}
-
-	if p, err := exec.LookPath("persian-timer-pill"); err == nil {
-		return p
-	}
 	return ""
 }
 
 func findWindowsFloatingScript() string {
-	candidates := []string{
-		"scripts\\floating_timer.ps1",
-		"..\\scripts\\floating_timer.ps1",
-	}
+	var candidates []string
+
 	if execPath, err := os.Executable(); err == nil {
 		execDir := filepath.Dir(execPath)
 		candidates = append(candidates,
@@ -214,6 +214,14 @@ func findWindowsFloatingScript() string {
 			filepath.Join(execDir, "..\\scripts\\floating_timer.ps1"),
 		)
 	}
+
+	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+		candidates = append(candidates, filepath.Join(localAppData, "PersianCalendar", "scripts", "floating_timer.ps1"))
+	}
+
+	// Development fallback
+	candidates = append(candidates, "scripts\\floating_timer.ps1", "..\\scripts\\floating_timer.ps1")
+
 	for _, c := range candidates {
 		if fi, err := os.Stat(c); err == nil && !fi.IsDir() {
 			return c
