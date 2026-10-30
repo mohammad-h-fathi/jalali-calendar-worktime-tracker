@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -300,8 +301,13 @@ func (h *APIHandler) handleTimerStop(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *APIHandler) handleWindowOpen(w http.ResponseWriter, r *http.Request) {
+	log.Println("Received request to focus/open dashboard window")
 	if h.windowLauncher != nil {
-		_ = h.windowLauncher.Open()
+		if err := h.windowLauncher.Open(); err != nil {
+			log.Printf("Error opening window: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusOK)
 }

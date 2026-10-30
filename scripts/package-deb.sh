@@ -7,7 +7,7 @@ ARCH="${2:-amd64}"
 BINARY="${3:-bin/persian-calendar}"
 OUTPUT_DIR="${4:-dist}"
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_ROOT="/tmp/persian-calendar-deb-$$"
 
 mkdir -p "$BUILD_ROOT/DEBIAN"

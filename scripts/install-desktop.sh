@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "Building Persian Calendar..."
 mkdir -p "$DIR/bin"

@@ -37,9 +37,13 @@ func main() {
 		_ = resp.Body.Close()
 		log.Printf("An instance of Persian Calendar is already running on %s", appURL)
 		if !*noWindow {
-			_, _ = client.Post(fmt.Sprintf("%s/api/window/open", appURL), "application/json", nil)
-			if err := launcher.Open(); err != nil {
-				log.Printf("Could not auto-open window: %v", err)
+			postResp, postErr := client.Post(fmt.Sprintf("%s/api/window/open", appURL), "application/json", nil)
+			if postErr == nil && postResp.StatusCode == http.StatusOK {
+				_ = postResp.Body.Close()
+			} else {
+				if err := launcher.Open(); err != nil {
+					log.Printf("Could not auto-open window: %v", err)
+				}
 			}
 		}
 		os.Exit(0)
