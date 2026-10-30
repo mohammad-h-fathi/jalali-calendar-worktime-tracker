@@ -1,0 +1,31 @@
+# Binaries and build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test and coverage artifacts
+*.test
+*.out
+
+# User data and config
+.config/
+web-profile/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data.json
+data.json.tmp
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*~

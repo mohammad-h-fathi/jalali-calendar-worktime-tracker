@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تقویم جلالی</title>
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="widget-body">
+  <div class="widget-container">
+    
+    <!-- Top Minimal Bar -->
+    <header class="widget-header">
+      <div class="header-info">
+        <h1 class="widget-title">گاه‌شمار فارسی</h1>
+        <span class="widget-subtitle" id="currentFullDateLabel">دوشنبه، ۴ آبان ۱۴۰۵</span>
+      </div>
+
+      <div class="header-actions">
+        <!-- Floating PiP Window Trigger -->
+        <button class="icon-action-btn" id="openPipBtn" title="تایمر شناور همیشه رو روی برنامه‌ها">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <rect x="11" y="9" width="8" height="6" rx="1.5" fill="currentColor"></rect>
+          </svg>
+        </button>
+
+        <!-- Compact Navigation Segment -->
+        <nav class="nav-segment">
+          <button class="seg-btn active" data-tab="calendar" title="تقویم ماهانه">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="3"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+            </svg>
+            <span>تقویم</span>
+          </button>
+          <button class="seg-btn" data-tab="worktime" title="زمان‌سنج کارکرد">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>زمان کار</span>
+          </button>
+          <button class="seg-btn" data-tab="todo" title="وظایف روز">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span class="seg-badge" id="navTodoCount">۰</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Global Compact Timer Bar (Always visible or expandable) -->
+    <div class="compact-timer-bar" id="compactTimerBar">
+      <div class="timer-bar-right">
+        <span class="timer-status-dot" id="globalTimerDot"></span>
+        <div class="timer-project-wrap">
+          <span class="timer-project-name" id="headerTimerProject">پروژه عمومی</span>
+          <span class="timer-project-desc" id="headerTimerDesc">آماده شروع</span>
+        </div>
+      </div>
+      <div class="timer-bar-left">
+        <div class="timer-clock-text" id="headerTimerClock">۰۰:۰۰:۰۰</div>
+        <div class="timer-quick-actions">
+          <button class="quick-btn start" id="timerStartBtn" title="شروع">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <polygon points="6 4 20 12 6 20 6 4"></polygon>
+            </svg>
+          </button>
+          <button class="quick-btn pause" id="timerPauseBtn" style="display: none;" title="توقف">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+              <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+            </svg>
+          </button>
+          <button class="quick-btn resume" id="timerResumeBtn" style="display: none;" title="ادامه">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <polygon points="6 4 20 12 6 20 6 4"></polygon>
+            </svg>
+          </button>
+          <button class="quick-btn stop" id="timerStopBtn" style="display: none;" title="پایان و ذخیره">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+              <rect x="5" y="5" width="14" height="14" rx="1.5"></rect>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW PANES -->
+    <main class="widget-content">
+
+      <!-- ============================================== -->
+      <!-- TAB 1: CALENDAR VIEW                           -->
+      <!-- ============================================== -->
+      <section class="tab-pane active" id="pane-calendar">
+        <!-- Calendar Grid Card -->
+        <div class="calendar-card">
+          <!-- Month Switcher -->
+          <div class="month-bar">
+            <button class="arrow-btn" id="calPrevMonthBtn" title="ماه قبل">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+            <div class="month-title-label">
+              <h2 id="calendarMonthTitle">آبان ۱۴۰۵</h2>
+            </div>
+            <button class="arrow-btn" id="calNextMonthBtn" title="ماه بعد">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button class="today-chip" id="calTodayBtn">امروز</button>
+          </div>
+
+          <!-- Weekday Headers -->
+          <div class="weekdays-grid">
+            <div>ش</div>
+            <div>ی</div>
+            <div>د</div>
+            <div>س</div>
+            <div>چ</div>
+            <div>پ</div>
+            <div class="weekend-col">ج</div>
+          </div>
+
+          <!-- 7-Column Days Grid -->
+          <div class="days-grid" id="calendarDaysGrid">
+            <!-- Day buttons rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Selected Day Bottom Card -->
+        <div class="day-details-card">
+          <div class="day-details-header">
+            <div class="day-meta">
+              <h3 id="selectedDateTitle">۴ آبان ۱۴۰۵</h3>
+              <span class="day-sub-badge" id="selectedDateSubtitle">امروز</span>
+            </div>
+            <span class="day-work-badge" id="selectedDayWorkTotal">۰ ساعت</span>
+          </div>
+
+          <!-- Events from iran.ir -->
+          <div class="detail-block">
+            <div class="detail-label">مناسبت‌ها و رویدادها (iran.ir):</div>
+            <ul class="mini-events-list" id="selectedDayEventsList">
+              <li class="empty-text">رویدادی برای این روز نیست</li>
+            </ul>
+          </div>
+
+          <!-- Tasks Checklist for Day -->
+          <div class="detail-block">
+            <div class="detail-label-row">
+              <span>کارهای این روز:</span>
+              <button class="inline-add-btn" id="quickAddTaskBtn">+ کار جدید</button>
+            </div>
+            <ul class="mini-tasks-list" id="selectedDayTasksList">
+              <li class="empty-text">کاری برای این روز ثبت نشده است</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- TAB 2: WORKTIME TRACKER                        -->
+      <!-- ============================================== -->
+      <section class="tab-pane" id="pane-worktime">
+        <div class="worktime-card">
+          <!-- Stopwatch Center Display -->
+          <div class="stopwatch-center">
+            <div class="stopwatch-digits" id="heroTimerDigits">۰۰:۰۰:۰۰</div>
+            <div class="stopwatch-status" id="heroTimerStatus">آماده شروع کار</div>
+          </div>
+
+          <!-- Project Select Chips -->
+          <div class="worktime-section">
+            <div class="section-row">
+              <label class="field-label">پروژه فعال:</label>
+              <button class="inline-add-btn" id="addNewProjectBtn">+ پروژه جدید</button>
+            </div>
+            <div class="project-chips-wrap" id="projectChipsList">
+              <!-- Rendered via JS -->
+            </div>
+            <select id="timerProjectSelect" style="display: none;"></select>
+          </div>
+
+          <!-- Task Description Input -->
+          <div class="worktime-section">
+            <label class="field-label" for="timerDescInput">روی چه کاری تمرکز دارید؟</label>
+            <input type="text" id="timerDescInput" class="compact-input" placeholder="عنوان کار یا فعالیت...">
+          </div>
+
+          <!-- Manual Log Button -->
+          <div class="manual-log-row">
+            <button class="btn-outline-compact" id="manualLogModalBtn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              <span>ثبت دستی سشن</span>
+            </button>
+          </div>
+
+          <!-- Today's Summary & Breakdown -->
+          <div class="summary-box">
+            <div class="summary-line">
+              <span>مجموع کار امروز:</span>
+              <strong id="worktimeTodayTotal">۰ ساعت</strong>
+            </div>
+            <div class="breakdown-list" id="projectBreakdownWrapper"></div>
+          </div>
+
+          <!-- Recent Sessions -->
+          <div class="sessions-history-box">
+            <div class="field-label">سوابق کارکرد امروز:</div>
+            <table class="compact-table">
+              <thead>
+                <tr>
+                  <th>پروژه</th>
+                  <th>بازه</th>
+                  <th>مدت</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="workSessionsTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- TAB 3: TO-DO & TASK MANAGER                    -->
+      <!-- ============================================== -->
+      <section class="tab-pane" id="pane-todo">
+        <div class="todo-card">
+          <!-- Quick Add Form -->
+          <form id="createTaskForm" class="todo-add-box">
+            <input type="text" id="newTaskTitle" class="compact-input" placeholder="عنوان کار جدید..." required>
+            <div class="todo-options-bar">
+              <input type="text" id="newTaskJalaliDate" class="mini-input" placeholder="1405-08-04" title="تاریخ سررسید">
+              <select id="newTaskPriority" class="mini-select" title="اولویت">
+                <option value="medium">متوسط</option>
+                <option value="high">بالا</option>
+                <option value="urgent">فوری 🔥</option>
+                <option value="low">کم</option>
+              </select>
+              <button type="submit" class="btn-add-task">+ افزودن</button>
+            </div>
+            <input type="hidden" id="newTaskCategory" value="">
+          </form>
+
+          <!-- Filters -->
+          <div class="todo-filter-strip">
+            <button class="pill-filter active" data-filter="today">امروز</button>
+            <button class="pill-filter" data-filter="pending">باز</button>
+            <button class="pill-filter" data-filter="completed">انجام شده</button>
+            <button class="pill-filter" data-filter="all">همه</button>
+            <span class="tasks-count-pill" id="tasksCountSummary">۰ مورد</span>
+          </div>
+
+          <!-- Task List -->
+          <div class="tasks-scroll-container" id="tasksListContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: MANUAL WORKTIME LOG -->
+  <div class="modal-backdrop" id="manualLogModal" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h4>ثبت دستی زمان کار</h4>
+        <button class="modal-close" id="closeManualModalBtn">&times;</button>
+      </div>
+      <form id="manualLogForm">
+        <div class="modal-fields">
+          <div class="field-item">
+            <label>تاریخ (شمسی):</label>
+            <input type="text" id="manualDate" class="compact-input" required>
+          </div>
+          <div class="field-item">
+            <label>پروژه:</label>
+            <select id="manualProjectSelect" class="compact-select" required></select>
+          </div>
+          <div class="field-row">
+            <div class="field-item">
+              <label>شروع:</label>
+              <input type="time" id="manualStartTime" class="compact-input" required value="09:00">
+            </div>
+            <div class="field-item">
+              <label>پایان:</label>
+              <input type="time" id="manualEndTime" class="compact-input" required value="11:30">
+            </div>
+          </div>
+          <div class="field-item">
+            <label>توضیحات:</label>
+            <input type="text" id="manualDesc" class="compact-input" placeholder="فعالیت انجام شده...">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-text" id="cancelManualBtn">انصراف</button>
+          <button type="submit" class="btn-primary-sm">ذخیره سشن</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD PROJECT -->
+  <div class="modal-backdrop" id="addProjectModal" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h4>افزودن پروژه</h4>
+        <button class="modal-close" id="closeProjectModalBtn">&times;</button>
+      </div>
+      <form id="addProjectForm">
+        <div class="modal-fields">
+          <div class="field-item">
+            <label>نام پروژه:</label>
+            <input type="text" id="newProjectName" class="compact-input" required placeholder="مثلاً: طراحی...">
+          </div>
+          <div class="field-item">
+            <label>رنگ:</label>
+            <input type="color" id="newProjectColor" class="compact-color" value="#3b82f6">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-text" id="cancelProjectBtn">انصراف</button>
+          <button type="submit" class="btn-primary-sm">ذخیره</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="js/floating.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/worktime.js"></script>
+  <script src="js/todo.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

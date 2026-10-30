@@ -1,0 +1,148 @@
+name: Release Multi-Platform Binaries & Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag or version (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          check-latest: true
+
+      - name: Determine Version Tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag_name }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Building release for tag: $TAG"
+
+      - name: Prepare Output Directory
+        run: mkdir -p dist/
+
+      # ----------------------------------------------------
+      # 1. LINUX BUILDS (amd64 & arm64)
+      # ----------------------------------------------------
+      - name: Build Linux amd64
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          go build -ldflags="-s -w" -o dist/persian-calendar-linux-amd64 ./cmd/persian-calendar
+          ./scripts/package-deb.sh "${{ steps.version.outputs.tag }}" amd64 dist/persian-calendar-linux-amd64 dist/
+          tar -czf dist/persian-calendar_${{ steps.version.outputs.tag }}_linux_amd64.tar.gz \
+            -C dist persian-calendar-linux-amd64 \
+            -C ../scripts floating_timer.py install-desktop.sh \
+            -C ../ fonts/
+
+      - name: Build Linux arm64
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: arm64
+        run: |
+          go build -ldflags="-s -w" -o dist/persian-calendar-linux-arm64 ./cmd/persian-calendar
+          ./scripts/package-deb.sh "${{ steps.version.outputs.tag }}" arm64 dist/persian-calendar-linux-arm64 dist/
+          tar -czf dist/persian-calendar_${{ steps.version.outputs.tag }}_linux_arm64.tar.gz \
+            -C dist persian-calendar-linux-arm64 \
+            -C ../scripts floating_timer.py install-desktop.sh \
+            -C ../ fonts/
+
+      # ----------------------------------------------------
+      # 2. WINDOWS BUILDS (amd64 & arm64)
+      # ----------------------------------------------------
+      - name: Install zip tool
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Build Windows amd64
+        env:
+          CGO_ENABLED: 0
+          GOOS: windows
+          GOARCH: amd64
+        run: |
+          go build -ldflags="-s -w -H=windowsgui" -o dist/persian-calendar.exe ./cmd/persian-calendar
+          mkdir -p /tmp/win-pkg/scripts
+          cp dist/persian-calendar.exe /tmp/win-pkg/
+          cp scripts/floating_timer.ps1 /tmp/win-pkg/scripts/
+          cp scripts/install-windows.bat /tmp/win-pkg/
+          cp -r fonts /tmp/win-pkg/
+          (cd /tmp/win-pkg && zip -r "$GITHUB_WORKSPACE/dist/persian-calendar_${{ steps.version.outputs.tag }}_windows_amd64.zip" .)
+          rm -rf /tmp/win-pkg
+
+      - name: Build Windows arm64
+        env:
+          CGO_ENABLED: 0
+          GOOS: windows
+          GOARCH: arm64
+        run: |
+          go build -ldflags="-s -w -H=windowsgui" -o dist/persian-calendar-arm64.exe ./cmd/persian-calendar
+          mkdir -p /tmp/win-pkg/scripts
+          cp dist/persian-calendar-arm64.exe /tmp/win-pkg/persian-calendar.exe
+          cp scripts/floating_timer.ps1 /tmp/win-pkg/scripts/
+          cp scripts/install-windows.bat /tmp/win-pkg/
+          cp -r fonts /tmp/win-pkg/
+          (cd /tmp/win-pkg && zip -r "$GITHUB_WORKSPACE/dist/persian-calendar_${{ steps.version.outputs.tag }}_windows_arm64.zip" .)
+          rm -rf /tmp/win-pkg
+
+      # ----------------------------------------------------
+      # 3. MACOS BUILDS (amd64 & arm64 Apple Silicon)
+      # ----------------------------------------------------
+      - name: Build macOS Darwin
+        env:
+          CGO_ENABLED: 0
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/persian-calendar-darwin-amd64 ./cmd/persian-calendar
+          tar -czf dist/persian-calendar_${{ steps.version.outputs.tag }}_darwin_amd64.tar.gz -C dist persian-calendar-darwin-amd64
+
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/persian-calendar-darwin-arm64 ./cmd/persian-calendar
+          tar -czf dist/persian-calendar_${{ steps.version.outputs.tag }}_darwin_arm64.tar.gz -C dist persian-calendar-darwin-arm64
+
+      # ----------------------------------------------------
+      # 4. CHECKSUMS & ARTIFACTS
+      # ----------------------------------------------------
+      - name: Generate SHA256 Checksums
+        run: |
+          cd dist
+          sha256sum *.deb *.tar.gz *.zip > checksums.txt
+          cat checksums.txt
+
+      # ----------------------------------------------------
+      # 5. PUBLISH GITHUB RELEASE
+      # ----------------------------------------------------
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Persian Calendar ${{ steps.version.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/*.deb
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
