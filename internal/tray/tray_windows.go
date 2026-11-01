@@ -28,8 +28,9 @@ var (
 	pAppendMenuW         = user32.NewProc("AppendMenuW")
 	pTrackPopupMenu      = user32.NewProc("TrackPopupMenu")
 	pGetCursorPos        = user32.NewProc("GetCursorPos")
-	pSetForegroundWindow = user32.NewProc("SetForegroundWindow")
-	pLoadIconW           = user32.NewProc("LoadIconW")
+	pSetForegroundWindow    = user32.NewProc("SetForegroundWindow")
+	pLoadIconW              = user32.NewProc("LoadIconW")
+	pRegisterWindowMessageW = user32.NewProc("RegisterWindowMessageW")
 
 	pShell_NotifyIconW = shell32.NewProc("Shell_NotifyIconW")
 	pGetModuleHandleW  = kernel32.NewProc("GetModuleHandleW")
@@ -124,14 +125,24 @@ type windowsTray struct {
 }
 
 var (
-	globalTray   *windowsTray
-	globalTrayMu sync.Mutex
+	globalTray       *windowsTray
+	globalTrayMu     sync.Mutex
+	wmTaskbarCreated uint32
 )
 
 func wndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	globalTrayMu.Lock()
 	t := globalTray
 	globalTrayMu.Unlock()
+
+	if wmTaskbarCreated != 0 && msg == wmTaskbarCreated {
+		if t != nil {
+			t.mu.RLock()
+			pShell_NotifyIconW.Call(uintptr(nimAdd), uintptr(unsafe.Pointer(&t.nid)))
+			t.mu.RUnlock()
+		}
+		return 0
+	}
 
 	switch msg {
 	case wmTrayCallback:
@@ -241,6 +252,9 @@ func NewTray(initialTitle string) (TrayController, error) {
 
 		globalTrayMu.Lock()
 		globalTray = t
+		taskbarMsgName, _ := syscall.UTF16PtrFromString("TaskbarCreated")
+		retMsg, _, _ := pRegisterWindowMessageW.Call(uintptr(unsafe.Pointer(taskbarMsgName)))
+		wmTaskbarCreated = uint32(retMsg)
 		globalTrayMu.Unlock()
 
 		ready <- nil
