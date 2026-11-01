@@ -41,7 +41,12 @@ func (l *WindowLauncher) Open() error {
 	candidates := getBrowserCandidates()
 	var browserPath string
 	for _, c := range candidates {
-		if path, err := exec.LookPath(c); err == nil {
+		if filepath.IsAbs(c) {
+			if fi, err := os.Stat(c); err == nil && !fi.IsDir() {
+				browserPath = c
+				break
+			}
+		} else if path, err := exec.LookPath(c); err == nil {
 			browserPath = path
 			break
 		}
@@ -62,6 +67,8 @@ func (l *WindowLauncher) Open() error {
 		// Fallback to system default opener
 		if runtime.GOOS == "windows" {
 			cmd = exec.Command("cmd", "/c", "start", l.url)
+		} else if runtime.GOOS == "darwin" {
+			cmd = exec.Command("open", l.url)
 		} else {
 			cmd = exec.Command("xdg-open", l.url)
 		}
@@ -87,6 +94,14 @@ func (l *WindowLauncher) Open() error {
 func getBrowserCandidates() []string {
 	if runtime.GOOS == "windows" {
 		return []string{"msedge.exe", "chrome.exe", "brave.exe"}
+	}
+	if runtime.GOOS == "darwin" {
+		return []string{
+			"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+			"/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+			"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+			"/Applications/Chromium.app/Contents/MacOS/Chromium",
+		}
 	}
 	return []string{
 		"google-chrome",

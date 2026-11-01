@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -21,6 +22,10 @@ import (
 	"persian_cal/internal/ui"
 	"persian_cal/web"
 )
+
+func init() {
+	runtime.LockOSThread()
+}
 
 func main() {
 	port := flag.Int("port", 41890, "Port for the embedded web application")
@@ -155,8 +160,18 @@ func main() {
 		cleanup()
 	}()
 
-	log.Printf("Server listening on %s", appURL)
-	if err := srv.Start(); err != nil {
-		log.Fatalf("Server error: %v", err)
+	// 9. Start Server in background goroutine
+	go func() {
+		log.Printf("Server listening on %s", appURL)
+		if err := srv.Start(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	// 10. Run tray / platform main-thread event loop
+	if trayCtrl != nil {
+		trayCtrl.Run()
+	} else {
+		select {}
 	}
 }

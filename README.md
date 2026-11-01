@@ -20,11 +20,14 @@ It displays a live Solar Hijri (Jalali) date and stopwatch indicator in the **Ub
 
 ## ✨ Key Features
 
-### 1. GNOME Top-Bar Live Indicator (StatusNotifierItem & DBusMenu)
-* **Always-visible date:** Shows today's Jalali date directly in the GNOME status panel (e.g. `۸ آبان ۱۴۰۵`).
-* **Live Dynamic Stopwatch:** When a timer is running, elapsed time ticks live right in the top bar:  
+### 1. Cross-Platform Top-Bar & Menu Bar Live Indicator (Linux, Windows, macOS)
+* **Linux GNOME:** Live StatusNotifierItem & DBusMenu in the Ubuntu GNOME top status bar.
+* **Windows 10 / 11:** Notification area system tray with TaskbarCreated auto-recovery.
+* **macOS:** Native AppKit `NSStatusBar` menu bar status item built in pure Go with zero CGO.
+* **Always-visible date:** Shows today's Jalali date directly in the system panel (e.g. `۸ آبان ۱۴۰۵`).
+* **Live Dynamic Stopwatch:** When a timer is running, elapsed time ticks live right in the top bar / menu bar:  
   `۸ آبان | ⏱ ۰۰:۲۴:۱۰`
-* **Right-Click Menu:** Quick access to open the dashboard, toggle/pause the timer, show the floating pill, or exit.
+* **Context Menu:** Quick access to open the dashboard, toggle/pause the timer, show the floating pill, or exit.
 
 ### 2. Borderless Always-on-Top Floating Action Timer Pill
 * **Truly Borderless & Frameless:** No window titlebars, no minimize/maximize/close buttons. Styled as a compact rounded glassmorphic capsule (~270x44px).

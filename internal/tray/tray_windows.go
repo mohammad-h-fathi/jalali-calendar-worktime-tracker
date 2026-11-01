@@ -122,6 +122,7 @@ type windowsTray struct {
 	onShowFloating func()
 	onExit         func()
 	closed         bool
+	done           chan struct{}
 }
 
 var (
@@ -199,6 +200,7 @@ func wndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 func NewTray(initialTitle string) (TrayController, error) {
 	t := &windowsTray{
 		title: initialTitle,
+		done:  make(chan struct{}),
 	}
 
 	ready := make(chan error, 1)
@@ -361,17 +363,25 @@ func (w *windowsTray) SetOnExit(fn func()) {
 	w.mu.Unlock()
 }
 
+func (w *windowsTray) Run() {
+	<-w.done
+}
+
 func (w *windowsTray) Close() {
 	w.mu.Lock()
-	defer w.mu.Unlock()
-
 	if w.closed {
+		w.mu.Unlock()
 		return
 	}
 	w.closed = true
+	hwnd := w.hwnd
+	nid := w.nid
+	w.mu.Unlock()
 
-	pShell_NotifyIconW.Call(uintptr(nimDelete), uintptr(unsafe.Pointer(&w.nid)))
-	if w.hwnd != 0 {
-		pDestroyWindow.Call(w.hwnd)
+	close(w.done)
+
+	pShell_NotifyIconW.Call(uintptr(nimDelete), uintptr(unsafe.Pointer(&nid)))
+	if hwnd != 0 {
+		pDestroyWindow.Call(hwnd)
 	}
 }

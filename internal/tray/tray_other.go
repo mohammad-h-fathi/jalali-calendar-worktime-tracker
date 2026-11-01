@@ -1,4 +1,4 @@
-//go:build !linux && !windows
+//go:build !linux && !windows && !darwin
 
 package tray
 
@@ -7,7 +7,7 @@ type dummyTray struct {
 	onActivate func()
 }
 
-// NewTray initializes a fallback dummy tray controller for other platforms (e.g. macOS).
+// NewTray initializes a fallback dummy tray controller for other unsupported platforms.
 func NewTray(initialTitle string) (TrayController, error) {
 	return &dummyTray{
 		title: initialTitle,
@@ -27,5 +27,9 @@ func (d *dummyTray) SetOnToggleTimer(fn func()) {}
 func (d *dummyTray) SetOnShowFloating(fn func()) {}
 
 func (d *dummyTray) SetOnExit(fn func()) {}
+
+func (d *dummyTray) Run() {
+	select {}
+}
 
 func (d *dummyTray) Close() {}

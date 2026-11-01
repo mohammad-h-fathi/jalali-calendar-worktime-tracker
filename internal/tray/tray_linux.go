@@ -28,6 +28,8 @@ type linuxTray struct {
 	path           dbus.ObjectPath
 	menuPath       dbus.ObjectPath
 	busName        string
+	closed         bool
+	done           chan struct{}
 }
 
 // ToolTipStruct represents the D-Bus structure for org.kde.StatusNotifierItem.ToolTip.
@@ -256,6 +258,7 @@ func NewTray(initialTitle string) (TrayController, error) {
 		busName:  busName,
 		title:    initialTitle,
 		tooltip:  "تقویم فارسی و زمان کار",
+		done:     make(chan struct{}),
 	}
 
 	// 1. Export StatusNotifierItem Methods
@@ -548,8 +551,22 @@ func (t *linuxTray) SetOnExit(fn func()) {
 	t.mu.Unlock()
 }
 
+func (t *linuxTray) Run() {
+	<-t.done
+}
+
 func (t *linuxTray) Close() {
+	t.mu.Lock()
+	if t.closed {
+		t.mu.Unlock()
+		return
+	}
+	t.closed = true
+	t.mu.Unlock()
+
+	close(t.done)
 	if t.conn != nil {
 		_ = t.conn.Close()
 	}
 }
+

@@ -14,6 +14,8 @@ type TrayController interface {
 	SetOnShowFloating(fn func())
 	// SetOnExit registers the callback triggered when the user clicks Exit in the menu.
 	SetOnExit(fn func())
+	// Run runs the platform event loop if required, or blocks until the tray is closed.
+	Run()
 	// Close unregisters the indicator.
 	Close()
 }
