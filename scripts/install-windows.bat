@@ -11,6 +11,9 @@ mkdir "%TARGET_DIR%\scripts" 2>nul
 
 echo [1/3] در حال کپی فایل‌های اجرایی...
 copy /Y "persian-calendar.exe" "%TARGET_DIR%\" >nul
+if exist "app-icon.ico" (
+    copy /Y "app-icon.ico" "%TARGET_DIR%\" >nul
+)
 if exist "scripts\floating_timer.ps1" (
     copy /Y "scripts\floating_timer.ps1" "%TARGET_DIR%\scripts\" >nul
 )
@@ -20,15 +23,18 @@ powershell -NoProfile -Command ^
   "$ws = New-Object -ComObject WScript.Shell; " ^
   "$sDesktop = $ws.CreateShortcut([System.IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), 'تقویم جلالی.lnk')); " ^
   "$sDesktop.TargetPath = '%TARGET_DIR%\persian-calendar.exe'; " ^
+  "if (Test-Path '%TARGET_DIR%\app-icon.ico') { $sDesktop.IconLocation = '%TARGET_DIR%\app-icon.ico' }; " ^
   "$sDesktop.Save(); " ^
   "$startMenuPath = [System.IO.Path]::Combine([Environment]::GetFolderPath('StartMenu'), 'Programs', 'تقویم جلالی.lnk'); " ^
   "$sStart = $ws.CreateShortcut($startMenuPath); " ^
   "$sStart.TargetPath = '%TARGET_DIR%\persian-calendar.exe'; " ^
+  "if (Test-Path '%TARGET_DIR%\app-icon.ico') { $sStart.IconLocation = '%TARGET_DIR%\app-icon.ico' }; " ^
   "$sStart.Save(); " ^
   "$startupPath = [System.IO.Path]::Combine([Environment]::GetFolderPath('Startup'), 'تقویم جلالی (پس‌زمینه).lnk'); " ^
   "$sStartup = $ws.CreateShortcut($startupPath); " ^
   "$sStartup.TargetPath = '%TARGET_DIR%\persian-calendar.exe'; " ^
   "$sStartup.Arguments = '--no-window'; " ^
+  "if (Test-Path '%TARGET_DIR%\app-icon.ico') { $sStartup.IconLocation = '%TARGET_DIR%\app-icon.ico' }; " ^
   "$sStartup.Save();"
 
 echo [3/3] نصب فونت‌ها...

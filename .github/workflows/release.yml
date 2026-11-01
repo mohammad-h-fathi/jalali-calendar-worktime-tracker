@@ -87,6 +87,7 @@ jobs:
           go build -ldflags="-s -w -H=windowsgui" -o dist/persian-calendar.exe ./cmd/persian-calendar
           mkdir -p /tmp/win-pkg/scripts
           cp dist/persian-calendar.exe /tmp/win-pkg/
+          cp web/assets/icons/app-icon.ico /tmp/win-pkg/
           cp scripts/floating_timer.ps1 /tmp/win-pkg/scripts/
           cp scripts/install-windows.bat /tmp/win-pkg/
           cp -r fonts /tmp/win-pkg/
@@ -102,6 +103,7 @@ jobs:
           go build -ldflags="-s -w -H=windowsgui" -o dist/persian-calendar-arm64.exe ./cmd/persian-calendar
           mkdir -p /tmp/win-pkg/scripts
           cp dist/persian-calendar-arm64.exe /tmp/win-pkg/persian-calendar.exe
+          cp web/assets/icons/app-icon.ico /tmp/win-pkg/
           cp scripts/floating_timer.ps1 /tmp/win-pkg/scripts/
           cp scripts/install-windows.bat /tmp/win-pkg/
           cp -r fonts /tmp/win-pkg/

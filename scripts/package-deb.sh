@@ -36,8 +36,24 @@ StartupWMClass=persian-calendar
 EOF
 chmod 644 "$BUILD_ROOT/usr/share/applications/persian-calendar.desktop"
 
-# 3. Icon
+# 3. Icons (Scalable, PNGs, and Pixmaps)
+mkdir -p "$BUILD_ROOT/usr/share/icons/hicolor/scalable/apps"
 cp "$DIR/web/assets/icons/app-icon.svg" "$BUILD_ROOT/usr/share/icons/hicolor/scalable/apps/persian-calendar.svg"
+
+for size in 16 32 48 64 128 256 512; do
+    mkdir -p "$BUILD_ROOT/usr/share/icons/hicolor/${size}x${size}/apps"
+    if [ -f "$DIR/web/assets/icons/app-icon-${size}.png" ]; then
+        cp "$DIR/web/assets/icons/app-icon-${size}.png" "$BUILD_ROOT/usr/share/icons/hicolor/${size}x${size}/apps/persian-calendar.png"
+    elif [ -f "$DIR/web/assets/icons/app-icon.png" ]; then
+        cp "$DIR/web/assets/icons/app-icon.png" "$BUILD_ROOT/usr/share/icons/hicolor/${size}x${size}/apps/persian-calendar.png"
+    fi
+done
+
+mkdir -p "$BUILD_ROOT/usr/share/pixmaps"
+cp "$DIR/web/assets/icons/app-icon.svg" "$BUILD_ROOT/usr/share/pixmaps/persian-calendar.svg"
+if [ -f "$DIR/web/assets/icons/app-icon-256.png" ]; then
+    cp "$DIR/web/assets/icons/app-icon-256.png" "$BUILD_ROOT/usr/share/pixmaps/persian-calendar.png"
+fi
 
 # 4. Lahzeh fonts
 cp "$DIR"/fonts/*.ttf "$BUILD_ROOT/usr/share/fonts/truetype/lahzeh/" 2>/dev/null || true

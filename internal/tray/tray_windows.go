@@ -4,6 +4,8 @@ package tray
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"syscall"
@@ -30,6 +32,7 @@ var (
 	pGetCursorPos        = user32.NewProc("GetCursorPos")
 	pSetForegroundWindow    = user32.NewProc("SetForegroundWindow")
 	pLoadIconW              = user32.NewProc("LoadIconW")
+	pLoadImageW             = user32.NewProc("LoadImageW")
 	pRegisterWindowMessageW = user32.NewProc("RegisterWindowMessageW")
 
 	pShell_NotifyIconW = shell32.NewProc("Shell_NotifyIconW")
@@ -235,8 +238,20 @@ func NewTray(initialTitle string) (TrayController, error) {
 
 		t.hwnd = hwnd
 
-		// Default application icon
-		hIcon, _, _ := pLoadIconW.Call(0, uintptr(idiApplication))
+		// Application icon: load custom app-icon.ico if available, fallback to default
+		var hIcon uintptr
+		if exePath, err := os.Executable(); err == nil {
+			iconPath := filepath.Join(filepath.Dir(exePath), "app-icon.ico")
+			if _, statErr := os.Stat(iconPath); statErr == nil {
+				if iconPathPtr, strErr := syscall.UTF16PtrFromString(iconPath); strErr == nil {
+					// IMAGE_ICON = 1, LR_LOADFROMFILE = 0x0010
+					hIcon, _, _ = pLoadImageW.Call(0, uintptr(unsafe.Pointer(iconPathPtr)), 1, 16, 16, 0x0010)
+				}
+			}
+		}
+		if hIcon == 0 {
+			hIcon, _, _ = pLoadIconW.Call(0, uintptr(idiApplication))
+		}
 
 		t.nid = notifyIconData{
 			cbSize:           uint32(unsafe.Sizeof(notifyIconData{})),
