@@ -18,6 +18,7 @@ fc-cache -f "$HOME/.local/share/fonts/Lahzeh" 2>/dev/null || true
 
 mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
 cp "$DIR/web/assets/icons/app-icon.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/persian-calendar.svg"
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
 
 mkdir -p "$HOME/.local/share/applications"
 cat > "$HOME/.local/share/applications/persian-calendar.desktop" <<EOF

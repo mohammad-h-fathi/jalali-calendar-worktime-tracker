@@ -5,9 +5,12 @@ package tray
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/godbus/dbus/v5/introspect"
 	"github.com/godbus/dbus/v5/prop"
 )
 
@@ -299,7 +302,44 @@ func NewTray(initialTitle string) (TrayController, error) {
 		t.menuPropsSpec = menuProps
 	}
 
-	// 4. Export All StatusNotifierItem Properties required by GNOME ubuntu-appindicators
+	// 4. Export Introspection for GNOME Shell and GDBus
+	sniIntrospect := &introspect.Node{
+		Name: string(t.path),
+		Interfaces: []introspect.Interface{
+			prop.IntrospectData,
+			{
+				Name:    "org.kde.StatusNotifierItem",
+				Methods: introspect.Methods(sni),
+			},
+		},
+	}
+	_ = conn.Export(introspect.NewIntrospectable(sniIntrospect), t.path, "org.freedesktop.DBus.Introspectable")
+
+	menuIntrospect := &introspect.Node{
+		Name: string(t.menuPath),
+		Interfaces: []introspect.Interface{
+			prop.IntrospectData,
+			{
+				Name:    "com.canonical.dbusmenu",
+				Methods: introspect.Methods(menu),
+			},
+		},
+	}
+	_ = conn.Export(introspect.NewIntrospectable(menuIntrospect), t.menuPath, "org.freedesktop.DBus.Introspectable")
+
+	rootIntrospect := &introspect.Node{
+		Name: "/",
+		Children: []introspect.Node{
+			{Name: "StatusNotifierItem"},
+			{Name: "MenuBar"},
+		},
+	}
+	_ = conn.Export(introspect.NewIntrospectable(rootIntrospect), "/", "org.freedesktop.DBus.Introspectable")
+
+	homeDir, _ := os.UserHomeDir()
+	iconPath := filepath.Join(homeDir, ".local/share/icons/hicolor/scalable/apps")
+
+	// 5. Export All StatusNotifierItem Properties required by GNOME ubuntu-appindicators
 	propsMap := map[string]map[string]*prop.Prop{
 		"org.kde.StatusNotifierItem": {
 			"Category": {
@@ -328,7 +368,7 @@ func NewTray(initialTitle string) (TrayController, error) {
 				Emit:     prop.EmitFalse,
 			},
 			"IconThemePath": {
-				Value:    "",
+				Value:    iconPath,
 				Writable: false,
 				Emit:     prop.EmitFalse,
 			},
@@ -343,7 +383,7 @@ func NewTray(initialTitle string) (TrayController, error) {
 				Emit:     prop.EmitFalse,
 			},
 			"IconName": {
-				Value:    "x-office-calendar",
+				Value:    "persian-calendar",
 				Writable: true,
 				Emit:     prop.EmitTrue,
 			},
@@ -379,12 +419,28 @@ func NewTray(initialTitle string) (TrayController, error) {
 			},
 			"ToolTip": {
 				Value: ToolTipStruct{
-					IconName:    "x-office-calendar",
+					IconName:    "persian-calendar",
 					Title:       initialTitle,
 					Description: "تقویم خورشیدی و زمان‌سنج کارکرد",
 				},
 				Writable: true,
 				Emit:     prop.EmitTrue,
+			},
+			// Ayatana / Ubuntu Indicators extensions for text display on GNOME panel
+			"XAyatanaLabel": {
+				Value:    initialTitle,
+				Writable: true,
+				Emit:     prop.EmitTrue,
+			},
+			"XAyatanaLabelGuide": {
+				Value:    "۰۰ آبان ۰۰۰۰",
+				Writable: false,
+				Emit:     prop.EmitFalse,
+			},
+			"XAyatanaOrderingIndex": {
+				Value:    uint32(0),
+				Writable: false,
+				Emit:     prop.EmitFalse,
 			},
 		},
 	}
@@ -396,9 +452,44 @@ func NewTray(initialTitle string) (TrayController, error) {
 	}
 	t.propsSpec = props
 
-	// 5. Register with org.kde.StatusNotifierWatcher
-	watcher := conn.Object("org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher")
-	_ = watcher.Call("org.kde.StatusNotifierWatcher.RegisterStatusNotifierItem", 0, t.busName)
+	// 6. Register with org.kde.StatusNotifierWatcher
+	registerWithWatcher := func() {
+		watcher := conn.Object("org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher")
+		call := watcher.Call("org.kde.StatusNotifierWatcher.RegisterStatusNotifierItem", 0, t.busName)
+		if call.Err != nil {
+			_ = watcher.Call("org.kde.StatusNotifierWatcher.RegisterStatusNotifierItem", 0, string(t.path))
+		}
+	}
+
+	registerWithWatcher()
+
+	// Automatic re-registration if GNOME Shell restarts or starts after autostart
+	go func() {
+		for _, delay := range []time.Duration{500 * time.Millisecond, 1500 * time.Millisecond, 3000 * time.Millisecond} {
+			time.Sleep(delay)
+			registerWithWatcher()
+		}
+
+		_ = conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+			"type='signal',interface='org.kde.StatusNotifierWatcher',member='StatusNotifierHostRegistered'")
+		_ = conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+			"type='signal',interface='org.freedesktop.DBus',member='NameOwnerChanged',arg0='org.kde.StatusNotifierWatcher'")
+
+		ch := make(chan *dbus.Signal, 10)
+		conn.Signal(ch)
+		for sig := range ch {
+			if sig == nil {
+				return
+			}
+			if sig.Name == "org.kde.StatusNotifierWatcher.StatusNotifierHostRegistered" {
+				registerWithWatcher()
+			} else if sig.Name == "org.freedesktop.DBus.NameOwnerChanged" && len(sig.Body) >= 3 {
+				if newOwner, ok := sig.Body[2].(string); ok && newOwner != "" {
+					registerWithWatcher()
+				}
+			}
+		}
+	}()
 
 	return t, nil
 }
@@ -410,8 +501,11 @@ func (t *linuxTray) SetTitle(title string) {
 
 	if t.propsSpec != nil {
 		_ = t.propsSpec.Set("org.kde.StatusNotifierItem", "Title", dbus.MakeVariant(title))
+		_ = t.propsSpec.Set("org.kde.StatusNotifierItem", "XAyatanaLabel", dbus.MakeVariant(title))
 	}
 	_ = t.conn.Emit(t.path, "org.kde.StatusNotifierItem.NewTitle")
+	_ = t.conn.Emit(t.path, "org.kde.StatusNotifierItem.XAyatanaNewTitle")
+	_ = t.conn.Emit(t.path, "org.kde.StatusNotifierItem.XAyatanaNewLabel")
 }
 
 func (t *linuxTray) SetToolTip(title, description string) {
@@ -421,7 +515,7 @@ func (t *linuxTray) SetToolTip(title, description string) {
 
 	if t.propsSpec != nil {
 		val := ToolTipStruct{
-			IconName:    "x-office-calendar",
+			IconName:    "persian-calendar",
 			Title:       title,
 			Description: description,
 		}
