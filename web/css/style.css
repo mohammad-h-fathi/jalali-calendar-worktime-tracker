@@ -240,8 +240,8 @@ body.widget-body {
 }
 
 .quick-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   color: #fff;
@@ -253,10 +253,20 @@ body.widget-body {
 }
 
 .quick-btn:hover {
-  transform: scale(1.1);
+  transform: scale(1.06);
 }
 
-.quick-btn.start { background: var(--emerald); }
+.quick-btn.start {
+  background: var(--emerald);
+  width: auto;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  gap: 6px;
+  font-family: var(--font-family);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
 .quick-btn.pause { background: var(--amber); }
 .quick-btn.resume { background: var(--emerald); }
 .quick-btn.stop { background: var(--rose); }
@@ -604,15 +614,16 @@ body.widget-body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 7px 14px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-subtle);
   color: var(--text-main);
   font-family: var(--font-family);
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 .chip-btn.active {
   background: rgba(59, 130, 246, 0.2);
@@ -638,6 +649,62 @@ body.widget-body {
   outline: none;
 }
 .compact-input:focus { border-color: #3b82f6; }
+
+.hero-timer-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.hero-timer-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  border: none;
+  color: #fff;
+  font-family: var(--font-family);
+  font-size: 0.96rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.hero-timer-btn:hover {
+  transform: translateY(-1px);
+}
+
+.hero-timer-btn.start {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+}
+
+.hero-timer-btn.pause {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+}
+
+.hero-timer-btn.resume {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.hero-timer-btn.stop {
+  background: rgba(244, 63, 94, 0.2);
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  color: #fda4af;
+}
+
+.hero-timer-active-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
 
 .manual-log-row {
   display: flex;

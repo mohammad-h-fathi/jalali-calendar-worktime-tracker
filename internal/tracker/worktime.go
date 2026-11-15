@@ -44,21 +44,66 @@ func (w *WorktimeService) notify(event string, timer models.ActiveTimer) {
 	}
 }
 
-// Start launches a new timer session.
+func (w *WorktimeService) resolveProjectColor(project string) string {
+	for _, p := range w.store.GetProjects() {
+		if p.Name == project && p.Color != "" {
+			return p.Color
+		}
+	}
+	return "#3b82f6"
+}
+
+// SelectProject updates the idle timer's selected project and color.
+func (w *WorktimeService) SelectProject(project, color string) (*models.ActiveTimer, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if project == "" {
+		project = "پروژه عمومی"
+	}
+	if color == "" {
+		color = w.resolveProjectColor(project)
+	}
+
+	current := w.store.GetActiveTimer()
+	if !current.IsRunning {
+		current.Project = project
+		current.Color = color
+		if err := w.store.SaveActiveTimer(current); err != nil {
+			return nil, err
+		}
+		w.notify("project", current)
+	}
+
+	return &current, nil
+}
+
+// Start launches a new timer session. If another timer is already running,
+// it stops and records the active session first.
 func (w *WorktimeService) Start(project, description, color string, taskID *string) (*models.ActiveTimer, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	current := w.store.GetActiveTimer()
 	if current.IsRunning {
-		return nil, errors.New("یک تایمر هم‌اکنون در حال اجراست")
+		if _, err := w.stopLocked(current); err != nil {
+			return nil, err
+		}
 	}
 
 	if project == "" {
-		project = "پروژه عمومی"
+		if current.Project != "" {
+			project = current.Project
+		} else {
+			project = "پروژه عمومی"
+		}
 	}
 	if color == "" {
-		color = "#3b82f6"
+		if project == current.Project && current.Color != "" {
+			color = current.Color
+		} else {
+			color = w.resolveProjectColor(project)
+		}
 	}
 
 	now := time.Now()
@@ -146,6 +191,23 @@ func (w *WorktimeService) Stop() (*models.WorkSession, error) {
 		return nil, errors.New("هیچ تایمر فعالی برای پایان دادن وجود ندارد")
 	}
 
+	lastSession, err := w.stopLocked(current)
+	if err != nil {
+		return nil, err
+	}
+
+	cleared := models.ActiveTimer{
+		IsRunning: false,
+		Project:   current.Project,
+		Color:     current.Color,
+	}
+	_ = w.store.SaveActiveTimer(cleared)
+
+	w.notify("stop", cleared)
+	return lastSession, nil
+}
+
+func (w *WorktimeService) stopLocked(current models.ActiveTimer) (*models.WorkSession, error) {
 	totalSeconds := current.ElapsedSeconds()
 	now := time.Now()
 
@@ -224,10 +286,6 @@ func (w *WorktimeService) Stop() (*models.WorkSession, error) {
 		}
 	}
 
-	cleared := models.ActiveTimer{IsRunning: false}
-	_ = w.store.SaveActiveTimer(cleared)
-
-	w.notify("stop", cleared)
 	return lastSession, nil
 }
 

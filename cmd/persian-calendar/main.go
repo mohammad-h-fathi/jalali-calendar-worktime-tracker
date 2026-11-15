@@ -126,7 +126,7 @@ func main() {
 					_, _ = workTracker.Pause()
 				}
 			} else {
-				_, _ = workTracker.Start("پروژه عمومی", "", "", nil)
+				_, _ = workTracker.Start(timer.Project, "", timer.Color, nil)
 			}
 		})
 		trayCtrl.SetOnShowFloating(func() {

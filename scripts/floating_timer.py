@@ -238,7 +238,7 @@ class FloatingPill(Gtk.Window):
                 self.elapsed = data.get("elapsed_seconds", 0)
                 self.is_running = timer.get("is_running", False)
                 self.is_paused = timer.get("is_paused", False)
-                self.project_name = timer.get("project", "پروژه عمومی")
+                self.project_name = timer.get("project") or "پروژه عمومی"
 
                 self.failed_polls = 0
                 self.update_view()
@@ -255,7 +255,7 @@ class FloatingPill(Gtk.Window):
         ctx_btn = self.btn_pause_resume.get_style_context()
 
         if not self.is_running:
-            self.lbl_project.set_text("آماده کار")
+            self.lbl_project.set_text(self.project_name or "پروژه عمومی")
             self.lbl_clock.set_text(to_persian_digits("۰۰:۰۰:۰۰"))
             if not ctx_dot.has_class("idle"):
                 ctx_dot.add_class("idle")
@@ -299,7 +299,7 @@ class FloatingPill(Gtk.Window):
     def on_toggle_pause(self, widget):
         if not self.is_running:
             try:
-                payload = json.dumps({"project": "پروژه عمومی"}).encode('utf-8')
+                payload = json.dumps({"project": self.project_name or "پروژه عمومی"}).encode('utf-8')
                 req = urllib.request.Request(
                     f"{SERVER_BASE}/api/timer/start",
                     data=payload,

@@ -76,6 +76,7 @@ $capsule.Add_MouseLeftButtonDown({
 
 $script:isPaused = $false
 $script:isRunning = $false
+$script:projectName = "پروژه عمومی"
 
 function To-PersianDigits([string]$str) {
     $faDigits = @{'0'='۰';'1'='۱';'2'='۲';'3'='۳';'4'='۴';'5'='۵';'6'='۶';'7'='۷';'8'='۸';'9'='۹'}
@@ -104,9 +105,10 @@ function Update-State {
         $script:failedPolls = 0
         $script:isRunning = $timer.is_running
         $script:isPaused = $timer.is_paused
+        $script:projectName = if ($timer.project) { $timer.project } else { "پروژه عمومی" }
 
         if (-not $script:isRunning) {
-            $projectText.Text = "آماده کار"
+            $projectText.Text = $script:projectName
             $clockText.Text = "۰۰:۰۰:۰۰"
             $dot.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#64748B")
             $pauseResumeBtn.Content = "شروع ▶"
@@ -116,7 +118,7 @@ function Update-State {
             return
         }
 
-        $projectText.Text = if ($timer.project) { $timer.project } else { "پروژه عمومی" }
+        $projectText.Text = $script:projectName
         $clockText.Text = To-PersianDigits (Format-Seconds $elapsed)
         $stopBtn.Content = "پایان"
 
@@ -143,8 +145,8 @@ function Update-State {
 $pauseResumeBtn.Add_Click({
     if (-not $script:isRunning) {
         try {
-            $body = '{"project":"پروژه عمومی"}'
-            Invoke-RestMethod -Uri "$ServerUrl/api/timer/start" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 2 | Out-Null
+            $body = (@{ project = $script:projectName } | ConvertTo-Json -Compress)
+            Invoke-RestMethod -Uri "$ServerUrl/api/timer/start" -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -ContentType "application/json; charset=utf-8" -TimeoutSec 2 | Out-Null
             Update-State
         } catch {}
         return

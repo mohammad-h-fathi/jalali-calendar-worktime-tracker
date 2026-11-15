@@ -249,9 +249,38 @@ func (h *APIHandler) handleTimerStart(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
+	prevTimer, _ := h.tracker.GetStatus()
+	wasRunning := prevTimer.IsRunning
+
 	timer, err := h.tracker.Start(req.Project, req.Description, req.Color, req.TaskID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if wasRunning {
+		h.sseHub.Broadcast("session_added", nil)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(timer)
+}
+
+func (h *APIHandler) handleTimerProject(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Project string `json:"project"`
+		Color   string `json:"color"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	timer, err := h.tracker.SelectProject(req.Project, req.Color)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

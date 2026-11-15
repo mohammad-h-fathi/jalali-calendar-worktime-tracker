@@ -28,6 +28,15 @@ class WorktimeModule {
     document.getElementById('timerResumeBtn').addEventListener('click', () => this.resumeTimer());
     document.getElementById('timerStopBtn').addEventListener('click', () => this.stopTimer());
 
+    const heroStart = document.getElementById('heroTimerStartBtn');
+    const heroPause = document.getElementById('heroTimerPauseBtn');
+    const heroResume = document.getElementById('heroTimerResumeBtn');
+    const heroStop = document.getElementById('heroTimerStopBtn');
+    if (heroStart) heroStart.addEventListener('click', () => this.startTimer());
+    if (heroPause) heroPause.addEventListener('click', () => this.pauseTimer());
+    if (heroResume) heroResume.addEventListener('click', () => this.resumeTimer());
+    if (heroStop) heroStop.addEventListener('click', () => this.stopTimer());
+
     // Add Project Modal
     document.getElementById('addNewProjectBtn').addEventListener('click', () => {
       document.getElementById('addProjectModal').style.display = 'flex';
@@ -72,6 +81,75 @@ class WorktimeModule {
     }
   }
 
+  getProjectColor(name) {
+    const proj = this.projects.find(p => p.name === name);
+    return (proj && proj.color) ? proj.color : '#3b82f6';
+  }
+
+  syncSelectedChip() {
+    document.querySelectorAll('#projectChipsList .chip-btn').forEach(chip => {
+      if (chip.dataset.project === this.selectedProject) {
+        chip.classList.add('active');
+      } else {
+        chip.classList.remove('active');
+      }
+    });
+  }
+
+  updateTimerActionControls() {
+    const startBtn = document.getElementById('timerStartBtn');
+    const heroStartBtn = document.getElementById('heroTimerStartBtn');
+    const heroStartLabel = document.getElementById('heroTimerStartLabel');
+    const heroActiveRow = document.getElementById('heroTimerActiveRow');
+    const heroPauseBtn = document.getElementById('heroTimerPauseBtn');
+    const heroResumeBtn = document.getElementById('heroTimerResumeBtn');
+    const headerProject = document.getElementById('headerTimerProject');
+
+    const selected = this.selectedProject || 'پروژه عمومی';
+
+    if (this.timer.is_running) {
+      const differentProject = selected !== this.timer.project;
+      if (startBtn) startBtn.style.display = differentProject ? 'inline-flex' : 'none';
+      if (heroStartBtn) heroStartBtn.style.display = differentProject ? 'inline-flex' : 'none';
+      if (heroStartLabel) {
+        heroStartLabel.textContent = `تغییر و شروع تایمر «${selected}»`;
+      }
+      if (heroActiveRow) heroActiveRow.style.display = 'grid';
+      if (heroPauseBtn) heroPauseBtn.style.display = this.timer.is_paused ? 'none' : 'inline-flex';
+      if (heroResumeBtn) heroResumeBtn.style.display = this.timer.is_paused ? 'inline-flex' : 'none';
+    } else {
+      if (headerProject) headerProject.textContent = selected;
+      if (startBtn) startBtn.style.display = 'inline-flex';
+      if (heroStartBtn) heroStartBtn.style.display = 'inline-flex';
+      if (heroStartLabel) {
+        heroStartLabel.textContent = `شروع تایمر «${selected}»`;
+      }
+      if (heroActiveRow) heroActiveRow.style.display = 'none';
+    }
+  }
+
+  async selectProject(name, color, persist = true) {
+    this.selectedProject = name || 'پروژه عمومی';
+    this.selectedColor = color || this.getProjectColor(this.selectedProject);
+    this.syncSelectedChip();
+    this.updateTimerActionControls();
+
+    if (persist && !this.timer.is_running) {
+      try {
+        await fetch('/api/timer/project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: this.selectedProject,
+            color: this.selectedColor,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to persist selected project:', err);
+      }
+    }
+  }
+
   renderProjectChips() {
     const container = document.getElementById('projectChipsList');
     if (!container) return;
@@ -84,17 +162,14 @@ class WorktimeModule {
     this.projects.forEach(p => {
       const chip = document.createElement('button');
       chip.type = 'button';
+      chip.dataset.project = p.name;
       chip.className = `chip-btn ${p.name === this.selectedProject ? 'active' : ''}`;
       chip.innerHTML = `
         <span class="chip-dot" style="background-color: ${p.color || '#3b82f6'};"></span>
         <span>${p.name}</span>
       `;
       chip.addEventListener('click', () => {
-        this.selectedProject = p.name;
-        this.selectedColor = p.color || '#3b82f6';
-        document.querySelectorAll('.chip-btn').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        document.getElementById('headerTimerProject').textContent = this.selectedProject;
+        this.selectProject(p.name, p.color || '#3b82f6', true);
       });
       container.appendChild(chip);
     });
@@ -103,7 +178,7 @@ class WorktimeModule {
       this.selectedProject = this.projects[0].name;
       this.selectedColor = this.projects[0].color;
     }
-    document.getElementById('headerTimerProject').textContent = this.selectedProject;
+    this.updateTimerActionControls();
   }
 
   populateManualProjectSelect() {
@@ -131,9 +206,8 @@ class WorktimeModule {
       });
       document.getElementById('addProjectModal').style.display = 'none';
       document.getElementById('newProjectName').value = '';
-      this.selectedProject = name;
-      this.selectedColor = color;
       await this.loadProjects();
+      await this.selectProject(name, color, true);
     } catch (err) {
       console.error('Failed to create project:', err);
     }
@@ -143,7 +217,11 @@ class WorktimeModule {
     try {
       const res = await fetch('/api/timer');
       const data = await res.json();
-      this.applyTimerState(data.timer, data.elapsed_seconds);
+      if (data.timer && data.timer.project) {
+        this.selectedProject = data.timer.project;
+        this.selectedColor = data.timer.color || this.getProjectColor(data.timer.project);
+      }
+      this.applyTimerState(data.timer, data.elapsed_seconds, true);
     } catch (err) {
       console.error('Failed to get timer:', err);
     }
@@ -151,20 +229,32 @@ class WorktimeModule {
 
   async startTimer() {
     const desc = document.getElementById('timerDescInput').value.trim();
+    const wasRunning = this.timer.is_running;
+    const project = this.selectedProject || 'پروژه عمومی';
+    const color = this.selectedColor || this.getProjectColor(project);
 
     try {
       const res = await fetch('/api/timer/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          project: this.selectedProject || 'پروژه عمومی',
+          project: project,
           description: desc,
-          color: this.selectedColor || '#3b82f6',
+          color: color,
         }),
       });
       if (res.ok) {
         const timer = await res.json();
-        this.applyTimerState(timer, 0);
+        this.applyTimerState(timer, 0, true);
+        if (wasRunning) {
+          await this.loadDailySummary();
+          if (window.calendarModule) {
+            window.calendarModule.loadMonth(window.calendarModule.currentYear, window.calendarModule.currentMonth);
+          }
+        }
+      } else {
+        const errTxt = await res.text();
+        alert(errTxt || 'خطا در شروع تایمر');
       }
     } catch (err) {
       console.error('Failed to start timer:', err);
@@ -199,7 +289,12 @@ class WorktimeModule {
     try {
       const res = await fetch('/api/timer/stop', { method: 'POST' });
       if (res.ok) {
-        this.applyTimerState({ is_running: false }, 0);
+        const stoppedProject = this.timer.project;
+        const stoppedColor = this.timer.color;
+        this.applyTimerState({ is_running: false, project: stoppedProject, color: stoppedColor }, 0);
+        if (this.selectedProject && this.selectedProject !== stoppedProject) {
+          await this.selectProject(this.selectedProject, this.selectedColor, true);
+        }
         await this.loadDailySummary();
         if (window.calendarModule) {
           window.calendarModule.loadMonth(window.calendarModule.currentYear, window.calendarModule.currentMonth);
@@ -238,6 +333,8 @@ class WorktimeModule {
     }
 
     const durationSec = (endMinutes - startMinutes) * 60;
+    const selectedOpt = document.querySelector('#manualProjectSelect option:checked');
+    const color = (selectedOpt && selectedOpt.dataset.color) ? selectedOpt.dataset.color : this.getProjectColor(project);
 
     try {
       const res = await fetch('/api/worktime/manual', {
@@ -271,9 +368,20 @@ class WorktimeModule {
     }
   }
 
-  applyTimerState(timer, elapsedSeconds) {
+  applyTimerState(timer, elapsedSeconds, syncSelection = false) {
+    const prevTimerProject = this.timer ? this.timer.project : '';
+    const incomingTimer = timer || { is_running: false };
+
+    if (syncSelection || (incomingTimer.project && incomingTimer.project !== prevTimerProject)) {
+      if (incomingTimer.project) {
+        this.selectedProject = incomingTimer.project;
+        this.selectedColor = incomingTimer.color || this.getProjectColor(incomingTimer.project);
+        this.syncSelectedChip();
+      }
+    }
+
     this.timer = {
-      ...timer,
+      ...incomingTimer,
       elapsed_seconds: elapsedSeconds || 0,
     };
 
@@ -285,7 +393,6 @@ class WorktimeModule {
     const heroDigits = document.getElementById('heroTimerDigits');
     const heroStatus = document.getElementById('heroTimerStatus');
 
-    const startBtn = document.getElementById('timerStartBtn');
     const pauseBtn = document.getElementById('timerPauseBtn');
     const resumeBtn = document.getElementById('timerResumeBtn');
     const stopBtn = document.getElementById('timerStopBtn');
@@ -294,7 +401,6 @@ class WorktimeModule {
       headerProject.textContent = this.timer.project;
       headerClock.textContent = window.toPersianDigits(window.formatSeconds(this.timer.elapsed_seconds));
 
-      startBtn.style.display = 'none';
       stopBtn.style.display = 'inline-flex';
 
       if (this.timer.is_paused) {
@@ -316,11 +422,12 @@ class WorktimeModule {
       headerDesc.textContent = 'آماده شروع';
       if (heroStatus) heroStatus.textContent = 'آماده شروع کار';
 
-      startBtn.style.display = 'inline-flex';
       pauseBtn.style.display = 'none';
       resumeBtn.style.display = 'none';
       stopBtn.style.display = 'none';
     }
+
+    this.updateTimerActionControls();
 
     const formattedTime = window.toPersianDigits(window.formatSeconds(this.timer.elapsed_seconds));
     headerClock.textContent = formattedTime;
