@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"errors"
+	"sort"
 	"sync"
 	"time"
 
@@ -334,6 +335,12 @@ func (w *WorktimeService) GetDailySummary(jalaliDate string) DailySummary {
 	for _, p := range projMap {
 		breakdown = append(breakdown, *p)
 	}
+	sort.Slice(breakdown, func(i, j int) bool {
+		if breakdown[i].DurationSeconds != breakdown[j].DurationSeconds {
+			return breakdown[i].DurationSeconds > breakdown[j].DurationSeconds
+		}
+		return breakdown[i].Project < breakdown[j].Project
+	})
 
 	return DailySummary{
 		JalaliDate:   jalaliDate,
@@ -341,5 +348,156 @@ func (w *WorktimeService) GetDailySummary(jalaliDate string) DailySummary {
 		SessionCount: len(sessions),
 		Breakdown:    breakdown,
 		Sessions:     sessions,
+	}
+}
+
+// ProjectDayTimeline holds a single Persian day's aggregated work and sessions for a project.
+type ProjectDayTimeline struct {
+	JalaliDate      string               `json:"jalali_date"`
+	DurationSeconds int64                `json:"duration_seconds"`
+	SessionCount    int                  `json:"session_count"`
+	Sessions        []models.WorkSession `json:"sessions"`
+}
+
+// ProjectTotalStats holds all-time statistics and daily timeline for a project.
+type ProjectTotalStats struct {
+	Project      string               `json:"project"`
+	Color        string               `json:"color"`
+	TotalSeconds int64                `json:"total_seconds"`
+	SessionCount int                  `json:"session_count"`
+	ActiveDays   int                  `json:"active_days"`
+	LastWorkedAt *time.Time           `json:"last_worked_at,omitempty"`
+	Timeline     []ProjectDayTimeline `json:"timeline"`
+}
+
+// AllProjectsSummary holds overall worktime and per-project totals & timelines.
+type AllProjectsSummary struct {
+	TotalSeconds int64               `json:"total_seconds"`
+	SessionCount int                 `json:"session_count"`
+	Projects     []ProjectTotalStats `json:"projects"`
+}
+
+// GetProjectsSummary computes all-time totals and chronological per-day timelines for each project.
+func (w *WorktimeService) GetProjectsSummary() AllProjectsSummary {
+	definedProjects := w.store.GetProjects()
+	sessions := w.store.GetSessions("")
+
+	type projectAgg struct {
+		stats   ProjectTotalStats
+		daysMap map[string]*ProjectDayTimeline
+		order   int
+	}
+
+	projMap := make(map[string]*projectAgg, len(definedProjects))
+	nextOrder := 0
+
+	for _, p := range definedProjects {
+		color := p.Color
+		if color == "" {
+			color = "#3b82f6"
+		}
+		projMap[p.Name] = &projectAgg{
+			stats: ProjectTotalStats{
+				Project:  p.Name,
+				Color:    color,
+				Timeline: make([]ProjectDayTimeline, 0),
+			},
+			daysMap: make(map[string]*ProjectDayTimeline),
+			order:   nextOrder,
+		}
+		nextOrder++
+	}
+
+	var totalSeconds int64
+	for _, s := range sessions {
+		totalSeconds += s.DurationSeconds
+
+		projName := s.Project
+		if projName == "" {
+			projName = "پروژه عمومی"
+		}
+
+		agg, ok := projMap[projName]
+		if !ok {
+			color := s.Color
+			if color == "" {
+				color = "#3b82f6"
+			}
+			agg = &projectAgg{
+				stats: ProjectTotalStats{
+					Project:  projName,
+					Color:    color,
+					Timeline: make([]ProjectDayTimeline, 0),
+				},
+				daysMap: make(map[string]*ProjectDayTimeline),
+				order:   nextOrder,
+			}
+			projMap[projName] = agg
+			nextOrder++
+		}
+
+		agg.stats.TotalSeconds += s.DurationSeconds
+		agg.stats.SessionCount++
+
+		workedAt := s.EndTime
+		if workedAt.IsZero() {
+			workedAt = s.StartTime
+		}
+		if !workedAt.IsZero() && (agg.stats.LastWorkedAt == nil || workedAt.After(*agg.stats.LastWorkedAt)) {
+			tCopy := workedAt
+			agg.stats.LastWorkedAt = &tCopy
+		}
+
+		jDate := s.JalaliDate
+		if jDate == "" {
+			jDate = calendar.FromTime(s.StartTime).FormatISO()
+		}
+
+		dayEntry, dayOk := agg.daysMap[jDate]
+		if !dayOk {
+			dayEntry = &ProjectDayTimeline{
+				JalaliDate: jDate,
+				Sessions:   make([]models.WorkSession, 0),
+			}
+			agg.daysMap[jDate] = dayEntry
+		}
+		dayEntry.DurationSeconds += s.DurationSeconds
+		dayEntry.SessionCount++
+		dayEntry.Sessions = append(dayEntry.Sessions, s)
+	}
+
+	aggList := make([]*projectAgg, 0, len(projMap))
+	for _, agg := range projMap {
+		timeline := make([]ProjectDayTimeline, 0, len(agg.daysMap))
+		for _, day := range agg.daysMap {
+			sort.Slice(day.Sessions, func(i, j int) bool {
+				return day.Sessions[i].StartTime.After(day.Sessions[j].StartTime)
+			})
+			timeline = append(timeline, *day)
+		}
+		sort.Slice(timeline, func(i, j int) bool {
+			return timeline[i].JalaliDate > timeline[j].JalaliDate
+		})
+		agg.stats.Timeline = timeline
+		agg.stats.ActiveDays = len(timeline)
+		aggList = append(aggList, agg)
+	}
+
+	sort.Slice(aggList, func(i, j int) bool {
+		if aggList[i].stats.TotalSeconds != aggList[j].stats.TotalSeconds {
+			return aggList[i].stats.TotalSeconds > aggList[j].stats.TotalSeconds
+		}
+		return aggList[i].order < aggList[j].order
+	})
+
+	projects := make([]ProjectTotalStats, 0, len(aggList))
+	for _, agg := range aggList {
+		projects = append(projects, agg.stats)
+	}
+
+	return AllProjectsSummary{
+		TotalSeconds: totalSeconds,
+		SessionCount: len(sessions),
+		Projects:     projects,
 	}
 }

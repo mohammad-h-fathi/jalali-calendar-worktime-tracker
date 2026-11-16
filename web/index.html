@@ -271,6 +271,31 @@
               </tbody>
             </table>
           </div>
+
+          <!-- All-Time Project Totals -->
+          <div class="summary-box project-totals-box">
+            <div class="summary-line">
+              <span>کل کارکرد همه پروژه‌ها:</span>
+              <strong id="worktimeAllTimeTotal">۰ ساعت</strong>
+            </div>
+            <div class="project-totals-list" id="allProjectsTotalsList">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Project Timeline -->
+          <div class="project-timeline-box">
+            <div class="timeline-header-row">
+              <div class="field-label" id="projectTimelineTitle">تایم‌لاین پروژه:</div>
+              <div class="timeline-filter-pills">
+                <button type="button" class="pill-filter active" id="timelineFilterSelectedBtn">پروژه فعال</button>
+                <button type="button" class="pill-filter" id="timelineFilterAllBtn">همه پروژه‌ها</button>
+              </div>
+            </div>
+            <div class="project-timeline" id="projectTimelineContainer">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
         </div>
       </section>
 

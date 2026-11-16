@@ -107,6 +107,7 @@ func NewServer(port int, store *storage.Store, workTracker *tracker.WorktimeServ
 	mux.HandleFunc("/api/window/open", handler.handleWindowOpen)
 	mux.HandleFunc("/api/worktime/manual", handler.handleManualWorktime)
 	mux.HandleFunc("/api/worktime/daily", handler.handleDailyWorktime)
+	mux.HandleFunc("/api/worktime/projects", handler.handleProjectsSummary)
 	mux.HandleFunc("/api/worktime/sessions/", handler.handleWorkSessionItem)
 	mux.HandleFunc("/api/projects", handler.handleProjects)
 

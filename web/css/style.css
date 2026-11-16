@@ -949,3 +949,223 @@ body.widget-body {
 
 .btn-text { background: none; border: none; color: var(--text-secondary); font-family: var(--font-family); font-size: 0.8rem; cursor: pointer; }
 .btn-primary-sm { padding: 6px 14px; background: var(--primary); border: none; border-radius: 6px; color: #fff; font-family: var(--font-family); font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+
+/* ========================================================= */
+/* ALL-TIME PROJECT TOTALS & TIMELINE                        */
+/* ========================================================= */
+.project-totals-box {
+  gap: 8px;
+}
+
+.project-totals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-total-item {
+  width: 100%;
+  text-align: right;
+  font-family: var(--font-family);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.project-total-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.project-total-item.active {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.55);
+}
+
+.project-total-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.project-total-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.project-total-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-total-duration {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #6ee7b7;
+  white-space: nowrap;
+}
+
+.project-total-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.project-total-bar-bg {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.project-total-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.project-timeline-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timeline-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timeline-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.project-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 290px;
+  overflow-y: auto;
+  padding-right: 10px;
+  border-right: 2px solid rgba(59, 130, 246, 0.25);
+}
+
+.timeline-day-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timeline-day-dot {
+  position: absolute;
+  right: -16px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+  border: 2px solid #0d121c;
+}
+
+.timeline-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.timeline-day-total {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.14);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+.timeline-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.timeline-session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.74rem;
+}
+
+.timeline-session-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.timeline-session-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.timeline-session-project {
+  font-weight: 700;
+  font-size: 0.73rem;
+}
+
+.timeline-session-range {
+  font-size: 0.69rem;
+  color: var(--text-muted);
+  direction: ltr;
+}
+
+.timeline-session-desc {
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-session-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.timeline-session-dur {
+  font-weight: 700;
+  color: #6ee7b7;
+  direction: ltr;
+  font-size: 0.74rem;
+}

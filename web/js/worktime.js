@@ -13,6 +13,8 @@ class WorktimeModule {
       elapsed_seconds: 0,
     };
     this.localTickInterval = null;
+    this.projectsSummary = null;
+    this.timelineMode = 'selected';
   }
 
   async init() {
@@ -36,6 +38,15 @@ class WorktimeModule {
     if (heroPause) heroPause.addEventListener('click', () => this.pauseTimer());
     if (heroResume) heroResume.addEventListener('click', () => this.resumeTimer());
     if (heroStop) heroStop.addEventListener('click', () => this.stopTimer());
+
+    const filterSelectedBtn = document.getElementById('timelineFilterSelectedBtn');
+    const filterAllBtn = document.getElementById('timelineFilterAllBtn');
+    if (filterSelectedBtn) {
+      filterSelectedBtn.addEventListener('click', () => this.setTimelineMode('selected'));
+    }
+    if (filterAllBtn) {
+      filterAllBtn.addEventListener('click', () => this.setTimelineMode('all'));
+    }
 
     // Add Project Modal
     document.getElementById('addNewProjectBtn').addEventListener('click', () => {
@@ -133,6 +144,8 @@ class WorktimeModule {
     this.selectedColor = color || this.getProjectColor(this.selectedProject);
     this.syncSelectedChip();
     this.updateTimerActionControls();
+    this.renderProjectsTotals();
+    this.renderProjectTimeline();
 
     if (persist && !this.timer.is_running) {
       try {
@@ -207,6 +220,7 @@ class WorktimeModule {
       document.getElementById('addProjectModal').style.display = 'none';
       document.getElementById('newProjectName').value = '';
       await this.loadProjects();
+      await this.loadProjectsSummary();
       await this.selectProject(name, color, true);
     } catch (err) {
       console.error('Failed to create project:', err);
@@ -377,6 +391,10 @@ class WorktimeModule {
         this.selectedProject = incomingTimer.project;
         this.selectedColor = incomingTimer.color || this.getProjectColor(incomingTimer.project);
         this.syncSelectedChip();
+        if (this.projectsSummary) {
+          this.renderProjectsTotals();
+          this.renderProjectTimeline();
+        }
       }
     }
 
@@ -470,6 +488,234 @@ class WorktimeModule {
     } catch (err) {
       console.error('Failed to load daily summary:', err);
     }
+
+    await this.loadProjectsSummary();
+  }
+
+  escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  formatDurationLabel(sec) {
+    const total = Math.max(0, Math.floor(sec || 0));
+    const hours = Math.floor(total / 3600);
+    const mins = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
+    if (hours > 0) {
+      return `${window.toPersianDigits(String(hours))} ساعت و ${window.toPersianDigits(String(mins))} دقیقه`;
+    }
+    if (mins > 0) {
+      return `${window.toPersianDigits(String(mins))} دقیقه`;
+    }
+    if (secs > 0) {
+      return `${window.toPersianDigits(String(secs))} ثانیه`;
+    }
+    return '۰ دقیقه';
+  }
+
+  setTimelineMode(mode) {
+    this.timelineMode = mode === 'all' ? 'all' : 'selected';
+    const selBtn = document.getElementById('timelineFilterSelectedBtn');
+    const allBtn = document.getElementById('timelineFilterAllBtn');
+    if (selBtn) selBtn.classList.toggle('active', this.timelineMode === 'selected');
+    if (allBtn) allBtn.classList.toggle('active', this.timelineMode === 'all');
+    this.renderProjectTimeline();
+  }
+
+  async loadProjectsSummary() {
+    try {
+      const res = await fetch('/api/worktime/projects');
+      if (!res.ok) return;
+      this.projectsSummary = await res.json();
+      this.renderProjectsTotals();
+      this.renderProjectTimeline();
+    } catch (err) {
+      console.error('Failed to load projects summary:', err);
+    }
+  }
+
+  renderProjectsTotals() {
+    const totalElem = document.getElementById('worktimeAllTimeTotal');
+    const container = document.getElementById('allProjectsTotalsList');
+    if (!container) return;
+
+    const summary = this.projectsSummary;
+    if (!summary) {
+      if (totalElem) totalElem.textContent = '۰ ساعت و ۰ دقیقه';
+      container.innerHTML = '<div class="empty-text">در حال بارگذاری...</div>';
+      return;
+    }
+
+    const totalSec = summary.total_seconds || 0;
+    if (totalElem) {
+      const hours = Math.floor(totalSec / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      totalElem.textContent = `${window.toPersianDigits(String(hours))} ساعت و ${window.toPersianDigits(String(mins))} دقیقه`;
+    }
+
+    const projects = summary.projects || [];
+    if (projects.length === 0) {
+      container.innerHTML = '<div class="empty-text">پروژه‌ای تعریف نشده است</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    projects.forEach(p => {
+      const pct = totalSec > 0 ? Math.round((p.total_seconds / totalSec) * 100) : 0;
+      const isActive = p.project === this.selectedProject;
+      const color = p.color || '#3b82f6';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `project-total-item ${isActive ? 'active' : ''}`;
+      btn.innerHTML = `
+        <div class="project-total-top">
+          <div class="project-total-name-wrap">
+            <span class="chip-dot" style="background-color: ${this.escapeHtml(color)}; flex-shrink: 0;"></span>
+            <span class="project-total-name">${this.escapeHtml(p.project)}</span>
+          </div>
+          <span class="project-total-duration">${this.formatDurationLabel(p.total_seconds)}</span>
+        </div>
+        <div class="project-total-meta">
+          <span>${window.toPersianDigits(String(p.session_count || 0))} سشن • ${window.toPersianDigits(String(p.active_days || 0))} روز</span>
+          <span>${window.toPersianDigits(String(pct))}٪</span>
+        </div>
+        <div class="project-total-bar-bg">
+          <div class="project-total-bar-fill" style="width: ${pct}%; background-color: ${this.escapeHtml(color)};"></div>
+        </div>
+      `;
+      btn.addEventListener('click', () => {
+        this.timelineMode = 'selected';
+        const selBtn = document.getElementById('timelineFilterSelectedBtn');
+        const allBtn = document.getElementById('timelineFilterAllBtn');
+        if (selBtn) selBtn.classList.add('active');
+        if (allBtn) allBtn.classList.remove('active');
+        this.selectProject(p.project, p.color, true);
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  renderProjectTimeline() {
+    const titleElem = document.getElementById('projectTimelineTitle');
+    const container = document.getElementById('projectTimelineContainer');
+    if (!container) return;
+
+    const selected = this.selectedProject || 'پروژه عمومی';
+    if (titleElem) {
+      titleElem.textContent = this.timelineMode === 'all'
+        ? 'تایم‌لاین همه پروژه‌ها:'
+        : `تایم‌لاین: ${selected}`;
+    }
+
+    if (!this.projectsSummary || !this.projectsSummary.projects) {
+      container.innerHTML = '<div class="empty-text">سابقه‌ای ثبت نشده است</div>';
+      return;
+    }
+
+    let days = [];
+    let dotColor = this.selectedColor || this.getProjectColor(selected);
+
+    if (this.timelineMode === 'selected') {
+      const proj = this.projectsSummary.projects.find(p => p.project === selected);
+      days = (proj && proj.timeline) ? proj.timeline : [];
+      if (proj && proj.color) dotColor = proj.color;
+    } else {
+      dotColor = '#3b82f6';
+      const dayMap = new Map();
+      this.projectsSummary.projects.forEach(p => {
+        (p.timeline || []).forEach(d => {
+          let existing = dayMap.get(d.jalali_date);
+          if (!existing) {
+            existing = {
+              jalali_date: d.jalali_date,
+              duration_seconds: 0,
+              session_count: 0,
+              sessions: [],
+            };
+            dayMap.set(d.jalali_date, existing);
+          }
+          existing.duration_seconds += d.duration_seconds || 0;
+          existing.session_count += d.session_count || 0;
+          existing.sessions.push(...(d.sessions || []));
+        });
+      });
+      days = Array.from(dayMap.values()).sort((a, b) => b.jalali_date.localeCompare(a.jalali_date));
+      days.forEach(d => {
+        d.sessions.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+      });
+    }
+
+    if (days.length === 0) {
+      const emptyMsg = this.timelineMode === 'all'
+        ? 'هنوز سشنی ثبت نشده است'
+        : `هنوز سشنی برای «${this.escapeHtml(selected)}» ثبت نشده است`;
+      container.innerHTML = `<div class="empty-text">${emptyMsg}</div>`;
+      return;
+    }
+
+    const todayIso = window.calendarModule && window.calendarModule.todayDate ? window.calendarModule.todayDate.iso : '';
+    container.innerHTML = '';
+
+    days.forEach(day => {
+      const dateStr = window.toPersianDigits((day.jalali_date || '').replace(/-/g, '/'));
+      const todayBadge = (day.jalali_date && day.jalali_date === todayIso) ? ' (امروز)' : '';
+
+      const groupEl = document.createElement('div');
+      groupEl.className = 'timeline-day-group';
+
+      const dotEl = document.createElement('span');
+      dotEl.className = 'timeline-day-dot';
+      dotEl.style.backgroundColor = dotColor;
+      groupEl.appendChild(dotEl);
+
+      const headerEl = document.createElement('div');
+      headerEl.className = 'timeline-day-header';
+      headerEl.innerHTML = `
+        <span>${dateStr}${todayBadge}</span>
+        <span class="timeline-day-total">${this.formatDurationLabel(day.duration_seconds)}</span>
+      `;
+      groupEl.appendChild(headerEl);
+
+      const listEl = document.createElement('div');
+      listEl.className = 'timeline-session-list';
+
+      (day.sessions || []).forEach(s => {
+        const start = new Date(s.start_time).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+        const end = new Date(s.end_time).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+        const sessColor = s.color || this.getProjectColor(s.project);
+        const descText = s.description ? this.escapeHtml(s.description) : 'بدون توضیح';
+
+        const itemEl = document.createElement('div');
+        itemEl.className = 'timeline-session-item';
+        itemEl.innerHTML = `
+          <div class="timeline-session-main">
+            <div class="timeline-session-top">
+              <span class="timeline-session-project" style="color:${this.escapeHtml(sessColor)};">${this.escapeHtml(s.project)}</span>
+              <span class="timeline-session-range">${start} - ${end}</span>
+            </div>
+            <div class="timeline-session-desc">${descText}</div>
+          </div>
+          <div class="timeline-session-actions">
+            <span class="timeline-session-dur">${window.toPersianDigits(window.formatSeconds(s.duration_seconds))}</span>
+            <button type="button" class="inline-add-btn timeline-del-btn" style="color:#f43f5e;" title="حذف">×</button>
+          </div>
+        `;
+        const delBtn = itemEl.querySelector('.timeline-del-btn');
+        if (delBtn) {
+          delBtn.addEventListener('click', () => this.deleteSession(s.id));
+        }
+        listEl.appendChild(itemEl);
+      });
+
+      groupEl.appendChild(listEl);
+      container.appendChild(groupEl);
+    });
   }
 
   renderBreakdown(breakdown, totalSec) {

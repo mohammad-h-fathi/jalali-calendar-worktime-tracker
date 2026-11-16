@@ -484,6 +484,16 @@ func (h *APIHandler) handleDailyWorktime(w http.ResponseWriter, r *http.Request)
 	_ = json.NewEncoder(w).Encode(summary)
 }
 
+func (h *APIHandler) handleProjectsSummary(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	summary := h.tracker.GetProjectsSummary()
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(summary)
+}
+
 func (h *APIHandler) handleProjects(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
